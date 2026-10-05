@@ -1,0 +1,296 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum Role {
+  ADMIN
+  GURU
+  SISWA
+  MITRA
+}
+
+enum StatusPKL {
+  BELUM_PKL
+  SEDANG_PKL
+  SELESAI_PKL
+}
+
+enum StatusPresensi {
+  HADIR
+  IZIN
+  SAKIT
+  ALPHA
+}
+
+enum TipePresensi {
+  MASUK
+  PULANG
+}
+
+enum StatusLogbook {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+}
+
+enum StatusLaporan {
+  DRAFT
+  SUBMITTED
+  REVIEWED
+  APPROVED
+}
+
+enum StatusSurat {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum JenisSurat {
+  IZIN_MAGANG
+  IZIN_TIDAK_MASUK
+}
+
+// ==========================================
+// MODELS
+// ==========================================
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  nama      String
+  role      Role
+  avatar    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  admin          Admin?
+  guruPendamping GuruPendamping?
+  siswa          Siswa?
+  mitra          Mitra?
+
+  @@map("users")
+}
+
+model Admin {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("admins")
+}
+
+model GuruPendamping {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  nip            String  @unique
+  noHp           String?
+  bidangKeahlian String?
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  siswaBimbingan Siswa[]
+  nilaiGuru NilaiGuru[]
+
+  @@map("guru_pendamping")
+}
+
+model Siswa {
+  id          String    @id @default(cuid())
+  userId      String    @unique
+  nisn        String    @unique
+  kelas       String
+  jurusan     String
+  noHp        String?
+  alamat      String?
+  guruId      String?
+  mitraId     String?
+  periodePklId String?
+  status      StatusPKL @default(BELUM_PKL)
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  guru           GuruPendamping? @relation(fields: [guruId], references: [id])
+  mitra          Mitra?          @relation(fields: [mitraId], references: [id])
+  periodePkl     PeriodePKL?     @relation(fields: [periodePklId], references: [id])
+  presensi       Presensi[]
+  logbook        LogbookMingguan[]
+  laporanAkhir   LaporanAkhir[]
+  suratIzin      SuratIzin[]
+  nilaiGuru      NilaiGuru[]
+  nilaiMitra     NilaiMitra[]
+
+  @@map("siswa")
+}
+
+model Mitra {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  namaPerusahaan  String
+  alamat          String
+  bidangUsaha     String
+  noTelp          String?
+  kontakPerson    String?
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  siswa       Siswa[]
+  qrPresensi  QRPresensi[]
+  nilaiMitra  NilaiMitra[]
+
+  @@map("mitra")
+}
+
+model PeriodePKL {
+  id             String   @id @default(cuid())
+  nama           String
+  tanggalMulai   DateTime
+  tanggalSelesai DateTime
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  siswa Siswa[]
+
+  @@map("periode_pkl")
+}
+
+model QRPresensi {
+  id        String       @id @default(cuid())
+  mitraId   String
+  kode      String       @unique
+  tanggal   DateTime     @default(now())
+  tipe      TipePresensi
+  expiredAt DateTime
+  createdAt DateTime     @default(now())
+
+  mitra    Mitra      @relation(fields: [mitraId], references: [id], onDelete: Cascade)
+  presensi Presensi[]
+
+  @@map("qr_presensi")
+}
+
+model Presensi {
+  id            String         @id @default(cuid())
+  siswaId       String
+  qrPresensiId  String?
+  tanggal       DateTime       @default(now())
+  waktuMasuk    DateTime?
+  waktuPulang   DateTime?
+  status        StatusPresensi @default(HADIR)
+  keterangan    String?
+  lokasiMasuk   String?
+  lokasiPulang  String?
+  latMasuk      Float?
+  lngMasuk      Float?
+  latPulang     Float?
+  lngPulang     Float?
+
+  siswa      Siswa       @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+  qrPresensi QRPresensi? @relation(fields: [qrPresensiId], references: [id])
+
+  @@map("presensi")
+}
+
+model LogbookMingguan {
+  id             String        @id @default(cuid())
+  siswaId        String
+  mingguKe       Int
+  tanggalMulai   DateTime
+  tanggalSelesai DateTime
+  kegiatan       String
+  hasil          String?
+  kendala        String?
+  dokumentasi    String?
+  status         StatusLogbook @default(DRAFT)
+  catatanGuru    String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  siswa Siswa @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+
+  @@map("logbook_mingguan")
+}
+
+model LaporanAkhir {
+  id            String        @id @default(cuid())
+  siswaId       String
+  judul         String
+  fileUrl       String
+  deskripsi     String?
+  status        StatusLaporan @default(DRAFT)
+  catatanReview String?
+  submittedAt   DateTime?
+  reviewedAt    DateTime?
+  createdAt     DateTime      @default(now())
+
+  siswa Siswa @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+
+  @@map("laporan_akhir")
+}
+
+model SuratIzin {
+  id             String      @id @default(cuid())
+  siswaId        String
+  jenisSurat     JenisSurat
+  alasan         String
+  tanggalMulai   DateTime
+  tanggalSelesai DateTime?
+  lampiran       String?
+  status         StatusSurat @default(PENDING)
+  catatanAdmin   String?
+  createdAt      DateTime    @default(now())
+  processedAt    DateTime?
+
+  siswa Siswa @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+
+  @@map("surat_izin")
+}
+
+model NilaiGuru {
+  id                String @id @default(cuid())
+  siswaId           String
+  guruId            String
+  nilaiSikap        Float
+  nilaiKeterampilan Float
+  nilaiLaporan      Float
+  nilaiAkhir        Float
+  catatan           String?
+  createdAt         DateTime @default(now())
+
+  siswa Siswa          @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+  guru  GuruPendamping @relation(fields: [guruId], references: [id], onDelete: Cascade)
+
+  @@unique([siswaId, guruId])
+  @@map("nilai_guru")
+}
+
+model NilaiMitra {
+  id              String @id @default(cuid())
+  siswaId         String
+  mitraId         String
+  nilaiDisiplin   Float
+  nilaiKerja      Float
+  nilaiInisiatif  Float
+  nilaiKerjasama  Float
+  nilaiAkhir      Float
+  catatan         String?
+  createdAt       DateTime @default(now())
+
+  siswa Siswa @relation(fields: [siswaId], references: [id], onDelete: Cascade)
+  mitra Mitra @relation(fields: [mitraId], references: [id], onDelete: Cascade)
+
+  @@unique([siswaId, mitraId])
+  @@map("nilai_mitra")
+}
