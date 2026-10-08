@@ -14,14 +14,15 @@ import {
   IconMapPin,
   IconNavigation,
   IconExternalLink,
+  IconMitra,
 } from '@/components/Icons';
 
 export default function SiswaPresensiPage() {
   const { data: session } = useSession();
-  const [activeTab, setActiveTab] = useState('SCAN'); // 'SCAN' | 'MANUAL' | 'IZIN' | 'RIWAYAT'
+  const [activeTab, setActiveTab] = useState('SCAN'); // 'SCAN' | 'IZIN' | 'RIWAYAT'
   const [tipePresensi, setTipePresensi] = useState('MASUK'); // 'MASUK' | 'PULANG'
   
-  // Method 1: Camera Scanner
+  // Method: Camera & Upload Barcode Scanner
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [availableCameras, setAvailableCameras] = useState([]);
   const [selectedCameraId, setSelectedCameraId] = useState('');
@@ -29,8 +30,16 @@ export default function SiswaPresensiPage() {
   const html5QrCodeRef = useRef(null);
   const fileInputRef = useRef(null);
 
-  // Method 2: Manual Code Input
-  const [manualCode, setManualCode] = useState('');
+  // Jadwal Operasional Ditentukan oleh Mitra PKL
+  const [jadwalMitra, setJadwalMitra] = useState({
+    mitraNama: 'PT Telkom Indonesia Witel Riau',
+    jamMasuk: '08:00',
+    jamPulang: '16:00',
+    toleransiMenit: 15,
+    hariKerja: 'Senin - Jumat',
+    lokasiKantor: 'Jl. Jenderal Sudirman No. 199, Pekanbaru',
+    catatan: 'Wajib melakukan presensi barcode QR masuk dan pulang sesuai jam kerja industri mitra.',
+  });
 
   // Permission / Sick Form
   const [formIzin, setFormIzin] = useState({
@@ -68,11 +77,26 @@ export default function SiswaPresensiPage() {
 
   useEffect(() => {
     fetchPresensiData();
+    fetchJadwalMitra();
     detectLocation();
     return () => {
       stopCameraScanner();
     };
   }, []);
+
+  const fetchJadwalMitra = async () => {
+    try {
+      const res = await fetch('/api/mitra/jadwal');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) {
+          setJadwalMitra(json.data);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch jadwal mitra:', err);
+    }
+  };
 
   // ----------------------------------------------------
   // GPS GEOLOCATION TRACKER
@@ -155,7 +179,7 @@ export default function SiswaPresensiPage() {
     if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost') {
       setCameraLoading(false);
       setError(
-        'SECURE_CONTEXT_ERROR: Akses kamera diblokir browser karena halaman dibuka melalui alamat IP/HTTP tanpa HTTPS (misal via smartphone http://192.168...). Browser smartphone mewajibkan HTTPS untuk kamera. Silakan gunakan metode "Input Kode Token" di bawah atau buka melalui http://localhost:3000 pada laptop.'
+        'SECURE_CONTEXT_ERROR: Akses kamera diblokir browser karena halaman dibuka melalui alamat IP/HTTP tanpa HTTPS (misal via smartphone http://192.168...). Browser smartphone mewajibkan HTTPS untuk kamera. Silakan gunakan tombol "Unggah Foto QR" di bawah atau buka melalui http://localhost:3000 pada laptop.'
       );
       return;
     }
@@ -164,7 +188,7 @@ export default function SiswaPresensiPage() {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       setCameraLoading(false);
       setError(
-        'BROWSER_UNSUPPORTED: Browser pada perangkat ini tidak mendukung akses kamera langsung. Silakan gunakan metode Input Kode Token atau unggah foto barcode.'
+        'BROWSER_UNSUPPORTED: Browser pada perangkat ini tidak mendukung akses kamera langsung. Silakan gunakan fitur unggah foto barcode QR mitra.'
       );
       return;
     }
@@ -281,15 +305,15 @@ export default function SiswaPresensiPage() {
         );
       } else if (errName === 'NotFoundError' || errName === 'DevicesNotFoundError' || errMsg.includes('no camera')) {
         setError(
-          'CAMERA_NOT_FOUND: Perangkat kamera tidak ditemukan pada komputer/laptop ini. Silakan gunakan metode "Input Kode Token" di bawah atau gunakan fitur "Unggah Foto Barcode".'
+          'CAMERA_NOT_FOUND: Perangkat kamera tidak ditemukan pada komputer/laptop ini. Silakan gunakan fitur "Unggah Foto QR" atau tombol "Tes Simulasi Barcode".'
         );
       } else if (errName === 'OverconstrainedError') {
         setError(
-          'OVERCONSTRAINED: Resolusi atau mode kamera tidak didukung oleh perangkat. Silakan coba pilih kamera lain dari dropdown di atas atau gunakan Input Kode Token.'
+          'OVERCONSTRAINED: Resolusi atau mode kamera tidak didukung oleh perangkat. Silakan coba pilih kamera lain dari dropdown di atas atau gunakan Unggah Foto QR.'
         );
       } else {
         setError(
-          `Gagal mengaktifkan kamera (${errName || 'Error'}): ${errMsg}. Anda dapat menggunakan metode "Input Kode Token" atau "Unggah Foto QR".`
+          `Gagal mengaktifkan kamera (${errName || 'Error'}): ${errMsg}. Anda dapat menggunakan fitur "Unggah Foto QR" atau "Tes Simulasi Barcode".`
         );
       }
     } finally {
@@ -387,7 +411,6 @@ export default function SiswaPresensiPage() {
       } else {
         setResult(data);
         setTodayRecord(data.data);
-        setManualCode('');
         fetchPresensiData();
       }
     } catch (err) {
@@ -459,12 +482,115 @@ export default function SiswaPresensiPage() {
         <div>
           <h1 className="page-title">Presensi Harian Siswa PKL</h1>
           <p className="page-subtitle">
-            Pindai barcode QR Mitra via kamera, input token manual, atau ajukan izin kehadiran.
+            Pindai barcode QR presensi Mitra via kamera atau unggah gambar barcode, serta pantau jadwal kerja yang ditentukan langsung oleh pihak Mitra PKL Anda.
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#ffffff', padding: '8px 16px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-primary)', boxShadow: 'var(--shadow-sm)' }}>
           <IconClock size={18} color="var(--primary)" />
           <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>{todayStr}</span>
+        </div>
+      </div>
+
+      {/* KARTU JADWAL KERJA DITENTUKAN OLEH MITRA INDUSTRI */}
+      <div
+        className="card card-glow"
+        style={{
+          marginBottom: 'var(--space-md)',
+          background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
+          border: '1.5px solid #bfdbfe',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px', marginBottom: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div
+              style={{
+                width: '44px',
+                height: '44px',
+                borderRadius: '12px',
+                background: '#dbeafe',
+                color: '#1d4ed8',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              <IconMitra size={24} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1e40af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  🏢 Jadwal Kerja Ditentukan Oleh Mitra PKL
+                </span>
+                <span className="badge badge-primary" style={{ fontSize: '0.72rem', padding: '2px 8px' }}>
+                  Kebijakan Industri
+                </span>
+              </div>
+              <h3 style={{ margin: '3px 0 0', fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                {jadwalMitra.mitraNama}
+              </h3>
+              <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                📍 {jadwalMitra.lokasiKantor} • Hari Kerja: <strong style={{ color: 'var(--text-primary)' }}>{jadwalMitra.hariKerja}</strong>
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span
+              style={{
+                fontSize: '0.78rem',
+                background: '#ffffff',
+                border: '1px solid #bfdbfe',
+                padding: '4px 10px',
+                borderRadius: '999px',
+                color: '#1d4ed8',
+                fontWeight: 600,
+              }}
+            >
+              ⚙️ Ditetapkan Pembimbing Industri
+            </span>
+          </div>
+        </div>
+
+        {/* Schedule Metric Blocks */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+          <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid #e2e8f0', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#047857' }}>
+              <IconClock size={16} />
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Jam Masuk Mitra</span>
+            </div>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>
+              {jadwalMitra.jamMasuk} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>WIB</span>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#059669', marginTop: '2px', fontWeight: 600 }}>
+              ✓ Toleransi keterlambatan: +{jadwalMitra.toleransiMenit} menit
+            </div>
+          </div>
+
+          <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid #e2e8f0', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#ea580c' }}>
+              <IconClock size={16} />
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Jam Pulang Mitra</span>
+            </div>
+            <div style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>
+              {jadwalMitra.jamPulang} <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>WIB</span>
+            </div>
+            <div style={{ fontSize: '0.75rem', color: '#c2410c', marginTop: '2px', fontWeight: 600 }}>
+              ✓ Presensi pulang dilakukan saat jam kerja usai
+            </div>
+          </div>
+
+          <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: 'var(--radius-md)', border: '1px solid #e2e8f0', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#475569' }}>
+              <IconAlert size={16} />
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Instruksi Mitra</span>
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: '1.45' }}>
+              {jadwalMitra.catatan || 'Wajib memindai barcode QR di kantor mitra untuk mencatat presensi masuk dan pulang.'}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -586,7 +712,7 @@ export default function SiswaPresensiPage() {
                 </span>
               ) : (
                 <span className="badge badge-danger" style={{ fontSize: '0.95rem', padding: '6px 14px' }}>
-                  ✕ BELUM PRESENSI (Batas Masuk Pukul 08:30 WIB)
+                  ✕ BELUM PRESENSI (Batas Masuk Sesuai Mitra: {jadwalMitra.jamMasuk} WIB • Toleransi {jadwalMitra.toleransiMenit}m)
                 </span>
               )}
             </div>
@@ -594,13 +720,16 @@ export default function SiswaPresensiPage() {
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
             {/* Jam & Lokasi Masuk */}
-            <div style={{ padding: '8px 16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', minWidth: '150px' }}>
+            <div style={{ padding: '8px 16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', minWidth: '160px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <IconClock size={14} color="var(--primary)" />
-                <span className="text-xs text-secondary font-medium">Jam Masuk</span>
+                <span className="text-xs text-secondary font-medium">Jam Masuk Siswa</span>
               </div>
               <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-primary)', marginTop: '2px' }}>
                 {todayRecord?.jamMasuk || '-'}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#059669', fontWeight: 600, marginTop: '2px' }}>
+                Target Mitra: {jadwalMitra.jamMasuk} WIB
               </div>
               {todayRecord?.lokasiMasuk && todayRecord.lokasiMasuk !== '-' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
@@ -618,13 +747,16 @@ export default function SiswaPresensiPage() {
             </div>
 
             {/* Jam & Lokasi Pulang */}
-            <div style={{ padding: '8px 16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', minWidth: '150px' }}>
+            <div style={{ padding: '8px 16px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', minWidth: '160px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <IconClock size={14} color="#ea580c" />
-                <span className="text-xs text-secondary font-medium">Jam Pulang</span>
+                <span className="text-xs text-secondary font-medium">Jam Pulang Siswa</span>
               </div>
               <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-primary)', marginTop: '2px' }}>
                 {todayRecord?.jamPulang || '-'}
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#ea580c', fontWeight: 600, marginTop: '2px' }}>
+                Target Mitra: {jadwalMitra.jamPulang} WIB
               </div>
               {todayRecord?.lokasiPulang && todayRecord.lokasiPulang !== '-' && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
@@ -653,21 +785,8 @@ export default function SiswaPresensiPage() {
               <strong style={{ fontSize: '1rem' }}>Kendala Akses Kamera Terdeteksi:</strong>
               <p style={{ margin: '4px 0 12px', fontSize: '0.9rem', lineHeight: '1.5' }}>{error}</p>
               
-              {/* Quick Action Fallbacks */}
+              {/* Quick Action Fallbacks (No Manual Token) */}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-primary"
-                  onClick={() => {
-                    setActiveTab('MANUAL');
-                    setError('');
-                  }}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <IconQRCode size={16} />
-                  <span>Gunakan Metode 2: Input Kode Token Manual</span>
-                </button>
-
                 <button
                   type="button"
                   className="btn btn-sm btn-outline"
@@ -708,7 +827,7 @@ export default function SiswaPresensiPage() {
         </div>
       )}
 
-      {/* TABS SELECTOR */}
+      {/* TABS SELECTOR (Token Tab Removed) */}
       <div style={{ display: 'flex', gap: '8px', marginBottom: 'var(--space-lg)', borderBottom: '1px solid var(--border-primary)', paddingBottom: '12px', flexWrap: 'wrap' }}>
         <button
           className={`btn ${activeTab === 'SCAN' ? 'btn-primary' : 'btn-outline'}`}
@@ -719,20 +838,7 @@ export default function SiswaPresensiPage() {
           style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
         >
           <IconCamera size={18} />
-          <span>Metode 1: Scan Kamera Barcode</span>
-        </button>
-
-        <button
-          className={`btn ${activeTab === 'MANUAL' ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => {
-            setActiveTab('MANUAL');
-            stopCameraScanner();
-            setError('');
-          }}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
-        >
-          <IconQRCode size={18} />
-          <span>Metode 2: Input Kode Token</span>
+          <span>Metode 1: Scan Barcode / QR Kamera</span>
         </button>
 
         <button
@@ -920,10 +1026,11 @@ export default function SiswaPresensiPage() {
 
               <div style={{ padding: '10px 14px', background: '#f8fafc', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-primary)' }}>
                 <strong style={{ color: 'var(--text-primary)' }}>3. Gunakan Metode Alternatif:</strong>
-                <p style={{ margin: '2px 0 0' }}>Jika laptop/PC tidak memiliki webcam, Anda dapat:</p>
+                <p style={{ margin: '2px 0 0' }}>Jika laptop/PC tidak memiliki webcam fisik atau kamera bermasalah, Anda dapat:</p>
                 <ul style={{ paddingLeft: '16px', margin: '4px 0 0' }}>
-                  <li>Pindah ke tab <strong>&ldquo;Metode 2: Input Kode Token&rdquo;</strong> (cukup ketikkan kode dari mitra).</li>
-                  <li>Atau klik <strong>&ldquo;Unggah Foto QR&rdquo;</strong> untuk memilih foto QR yang dikirimkan.</li>
+                  <li>Klik tombol <strong>&ldquo;Unggah Foto QR&rdquo;</strong> untuk memilih foto barcode QR mitra yang tersimpan di perangkat.</li>
+                  <li>Buka SIPKL melalui browser smartphone Anda yang memiliki kamera aktif.</li>
+                  <li>Atau gunakan tombol <strong>&ldquo;Tes Simulasi Barcode&rdquo;</strong> untuk pengujian kehadiran instan.</li>
                 </ul>
               </div>
             </div>
@@ -931,78 +1038,7 @@ export default function SiswaPresensiPage() {
         </div>
       )}
 
-      {/* TAB 2: MANUAL INPUT CODE */}
-      {activeTab === 'MANUAL' && (
-        <div className="card" style={{ maxWidth: '540px', margin: '0 auto', background: '#ffffff' }}>
-          <div style={{ textAlign: 'center', marginBottom: 'var(--space-lg)' }}>
-            <div style={{ display: 'inline-flex', padding: '16px', background: 'var(--role-badge-bg)', borderRadius: 'var(--radius-xl)', color: 'var(--primary)', marginBottom: '12px' }}>
-              <IconQRCode size={36} />
-            </div>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '4px' }}>
-              Input Kode Presensi dari Mitra
-            </h3>
-            <p className="text-secondary text-sm">
-              Ketikkan kode token yang dibagikan atau tertera di bawah layar QR Code mitra kantor.
-            </p>
-          </div>
-
-          {/* Tipe Selector */}
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-            <div style={{ display: 'inline-flex', background: 'var(--bg-primary)', padding: '4px', borderRadius: 'var(--radius-md)', gap: '4px' }}>
-              <button
-                className={`btn btn-sm ${tipePresensi === 'MASUK' ? 'btn-primary' : 'btn-ghost'}`}
-                onClick={() => setTipePresensi('MASUK')}
-              >
-                🌅 Presensi Masuk
-              </button>
-              <button
-                className={`btn btn-sm ${tipePresensi === 'PULANG' ? 'btn-primary' : 'btn-ghost'}`}
-                onClick={() => setTipePresensi('PULANG')}
-              >
-                🌇 Presensi Pulang
-              </button>
-            </div>
-          </div>
-
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              submitPresensi({
-                kodeQR: manualCode.trim(),
-                metode: 'INPUT_MANUAL',
-                status: 'HADIR',
-                tipe: tipePresensi,
-              });
-            }}
-          >
-            <div className="form-group" style={{ marginBottom: '16px' }}>
-              <label className="form-label">Kode Token Presensi *</label>
-              <input
-                type="text"
-                required
-                className="form-control"
-                placeholder="Contoh: SIPKL-MITRA-..."
-                value={manualCode}
-                onChange={(e) => setManualCode(e.target.value)}
-              />
-              <span className="text-xs text-secondary">
-                Token peka terhadap huruf besar/kecil. Salin atau ketik sesuai yang diberikan pembimbing lapangan.
-              </span>
-            </div>
-
-            <button
-              type="submit"
-              disabled={submitting || !manualCode}
-              className="btn btn-primary w-full"
-              style={{ padding: '12px' }}
-            >
-              {submitting ? 'Memverifikasi Presensi...' : `Kirim Presensi ${tipePresensi}`}
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* TAB 3: FORM IZIN / SAKIT (NON-ALPHA) */}
+      {/* TAB 2: FORM IZIN / SAKIT (NON-ALPHA) */}
       {activeTab === 'IZIN' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 'var(--space-lg)' }}>
           <div className="card" style={{ background: '#ffffff' }}>
@@ -1110,7 +1146,7 @@ export default function SiswaPresensiPage() {
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '0.875rem', lineHeight: '1.6', color: 'var(--text-secondary)' }}>
               <div style={{ padding: '12px', background: '#eff6ff', borderRadius: 'var(--radius-md)', border: '1px solid #bfdbfe' }}>
-                <strong style={{ color: '#1d4ed8' }}>✓ HADIR:</strong> Dicatat saat siswa melakukan scan kamera atau input token QR dari mitra di lokasi PKL.
+                <strong style={{ color: '#1d4ed8' }}>✓ HADIR:</strong> Dicatat saat siswa melakukan scan barcode QR mitra di tempat PKL sesuai jam masuk dan pulang yang ditentukan oleh pihak mitra industri.
               </div>
               <div style={{ padding: '12px', background: '#ecfdf5', borderRadius: 'var(--radius-md)', border: '1px solid #a7f3d0' }}>
                 <strong style={{ color: '#047857' }}>🏥 SAKIT / 📋 IZIN:</strong> Tidak dihitung alpha apabila mengisi form ini sebelum pukul 09.00 WIB dan diverifikasi oleh pihak mitra/guru.
@@ -1123,7 +1159,7 @@ export default function SiswaPresensiPage() {
         </div>
       )}
 
-      {/* TAB 4: REKAPITULASI & RIWAYAT */}
+      {/* TAB 3: REKAPITULASI & RIWAYAT */}
       {activeTab === 'RIWAYAT' && (
         <div className="card" style={{ background: '#ffffff' }}>
           {/* Summary Badges */}
@@ -1219,7 +1255,7 @@ export default function SiswaPresensiPage() {
                     </td>
                     <td>
                       <span className="badge badge-secondary" style={{ fontSize: '0.75rem' }}>
-                        {item.metode === 'KAMERA_SCAN' ? '📷 Kamera' : item.metode === 'INPUT_MANUAL' ? '⌨️ Token' : item.metode === 'SIMULASI_DEMO' ? '⚡ Simulasi' : '📄 Form Izin'}
+                        {item.metode === 'KAMERA_SCAN' ? '📷 Kamera' : item.metode === 'UPLOAD_GAMBAR' ? '🖼️ Unggah QR' : item.metode === 'SIMULASI_DEMO' ? '⚡ Simulasi' : '📄 Form Izin'}
                       </span>
                     </td>
                     <td style={{ maxWidth: '240px' }}>

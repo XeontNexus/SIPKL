@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getJadwalMitra } from '@/lib/jadwalMitra';
 
 let mockPresensi = [
   {
@@ -13,7 +14,7 @@ let mockPresensi = [
     status: 'HADIR',
     tipe: 'MASUK',
     metode: 'KAMERA_SCAN',
-    keterangan: 'Tepat Waktu via Scan Kamera',
+    keterangan: 'Hadir Tepat Waktu (Jadwal Masuk Mitra: 08:00 WIB)',
     lokasiMasuk: 'Bengkel Astra Honda Motor (Perhentian Raja)',
     latMasuk: 0.381245,
     lngMasuk: 101.378912,
@@ -33,8 +34,8 @@ let mockPresensi = [
     jamPulang: '-',
     status: 'HADIR',
     tipe: 'MASUK',
-    metode: 'INPUT_MANUAL',
-    keterangan: 'Tepat Waktu via Input Token',
+    metode: 'KAMERA_SCAN',
+    keterangan: 'Hadir Tepat Waktu (Jadwal Masuk Mitra: 08:00 WIB)',
     lokasiMasuk: 'PT Riau Media Grafika (Pekanbaru)',
     latMasuk: 0.507120,
     lngMasuk: 101.447810,
@@ -95,7 +96,8 @@ export async function GET(request) {
   const nisn = searchParams.get('nisn');
 
   try {
-    if (prisma) {
+    const isPlaceholder = !process.env.DATABASE_URL || process.env.DATABASE_URL.includes('host:5432');
+    if (prisma && !isPlaceholder) {
       const records = await prisma.presensi.findMany({
         where: {
           ...(tanggal && { tanggal: new Date(tanggal) }),
@@ -196,11 +198,40 @@ export async function POST(request) {
       }, { status: 400 });
     }
 
-    // Determine on-time or late
-    const currentHour = now.getHours();
-    const currentMin = now.getMinutes();
-    const isLate = tipe === 'MASUK' && (currentHour > 8 || (currentHour === 8 && currentMin > 0));
-    const keteranganStr = isLate ? `Terlambat ${currentMin} menit` : 'Hadir Tepat Waktu';
+    // Evaluate on-time / late based on Mitra's configured schedule
+    const jadwal = getJadwalMitra();
+    const [targetMasukH, targetMasukM] = (jadwal.jamMasuk || '08:00').split(':').map(Number);
+    const toleransi = Number(jadwal.toleransiMenit || 0);
+    const targetMasukMinutes = targetMasukH * 60 + targetMasukM;
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    let keteranganStr = '';
+    let isLate = false;
+
+    if (tipe === 'MASUK') {
+      if (currentMinutes > targetMasukMinutes + toleransi) {
+        isLate = true;
+        const diffMinutes = currentMinutes - targetMasukMinutes;
+        keteranganStr = `Terlambat ${diffMinutes} menit (Jadwal Masuk Mitra: ${jadwal.jamMasuk} WIB)`;
+      } else {
+        keteranganStr = `Hadir Tepat Waktu (Jadwal Masuk Mitra: ${jadwal.jamMasuk} WIB)`;
+      }
+    } else {
+      const [targetPulangH, targetPulangM] = (jadwal.jamPulang || '16:00').split(':').map(Number);
+      const targetPulangMinutes = targetPulangH * 60 + targetPulangM;
+      if (currentMinutes < targetPulangMinutes) {
+        const earlyDiff = targetPulangMinutes - currentMinutes;
+        keteranganStr = `Pulang Lebih Awal ${earlyDiff} menit (Jadwal Pulang Mitra: ${jadwal.jamPulang} WIB)`;
+      } else {
+        keteranganStr = `Pulang Sesuai Jam Kerja (Jadwal Pulang Mitra: ${jadwal.jamPulang} WIB)`;
+      }
+    }
+
+    const metodeLabel = metode === 'KAMERA_SCAN'
+      ? 'Scan Kamera'
+      : metode === 'UPLOAD_GAMBAR'
+      ? 'Unggah QR'
+      : 'Simulasi Scan Barcode';
 
     // Check if student already has a record today
     const existingIndex = mockPresensi.findIndex(p => p.nisn === nisn && p.tanggal === todayStr && p.status === 'HADIR');
@@ -209,6 +240,7 @@ export async function POST(request) {
       // Update checkout time and checkout location
       mockPresensi[existingIndex].jamPulang = timeStr;
       mockPresensi[existingIndex].tipe = 'PULANG';
+      mockPresensi[existingIndex].keterangan = `${mockPresensi[existingIndex].keterangan} • ${keteranganStr}`;
       mockPresensi[existingIndex].lokasiPulang = formattedLokasi;
       mockPresensi[existingIndex].latPulang = latitude;
       mockPresensi[existingIndex].lngPulang = longitude;
@@ -216,8 +248,9 @@ export async function POST(request) {
 
       return NextResponse.json({
         success: true,
-        message: `Presensi PULANG berhasil dicatat pada ${timeStr} beserta koordinat lokasi GPS`,
+        message: `Presensi PULANG berhasil dicatat pada ${timeStr} (${keteranganStr}) beserta titik lokasi GPS`,
         data: mockPresensi[existingIndex],
+        jadwalMitra: jadwal,
       });
     }
 
@@ -232,7 +265,7 @@ export async function POST(request) {
       status: 'HADIR',
       tipe: tipe,
       metode: metode,
-      keterangan: `${keteranganStr} (${metode === 'KAMERA_SCAN' ? 'Scan Kamera' : 'Input Manual'})`,
+      keterangan: `${keteranganStr} (${metodeLabel})`,
       lokasiMasuk: tipe === 'MASUK' ? formattedLokasi : '-',
       latMasuk: tipe === 'MASUK' ? latitude : null,
       lngMasuk: tipe === 'MASUK' ? longitude : null,
@@ -249,6 +282,7 @@ export async function POST(request) {
       success: true,
       message: `Presensi ${tipe} berhasil dicatat pada ${timeStr} (${keteranganStr}) beserta titik lokasi GPS`,
       data: newRecord,
+      jadwalMitra: jadwal,
     });
   } catch (err) {
     return NextResponse.json({ error: err.message }, { status: 500 });

@@ -90,23 +90,41 @@ export default function MitraDashboard() {
         </div>
       </div>
 
-      {/* Quick Action Banner */}
-      <div className="card card-glow" style={{ marginBottom: 'var(--space-xl)', background: 'linear-gradient(135deg, rgba(245,158,11,0.1) 0%, rgba(234,88,12,0.1) 100%)', border: '1px solid rgba(245,158,11,0.25)' }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+      {/* Quick Action Banners */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+        <div className="card card-glow" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.08) 0%, rgba(234,88,12,0.08) 100%)', border: '1px solid rgba(245,158,11,0.25)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <IconQRCode size={22} color="var(--primary)" />
-              <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: 0 }}>
-                Tampilkan QR Code Presensi Hari Ini
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>
+                QR Code Presensi Harian
               </h3>
             </div>
-            <p className="text-secondary text-sm" style={{ margin: 0 }}>
-              Buka layar QR Code agar siswa magang dapat langsung memindai kehadiran hari ini melalui smartphone mereka.
+            <p className="text-secondary text-sm" style={{ margin: '0 0 16px' }}>
+              Tampilkan barcode QR di layar monitor kantor agar siswa magang dapat memindai kehadiran masuk dan pulang.
             </p>
           </div>
-          <Link href="/dashboard/mitra/qr-presensi" className="btn btn-primary" style={{ padding: '10px 22px', fontSize: '0.95rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-            <IconQRCode size={18} />
+          <Link href="/dashboard/mitra/qr-presensi" className="btn btn-primary" style={{ padding: '9px 18px', fontSize: '0.9rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <IconQRCode size={16} />
             <span>Buka QR Presensi</span>
+          </Link>
+        </div>
+
+        <div className="card card-glow" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(37,99,235,0.08) 100%)', border: '1px solid rgba(59,130,246,0.25)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <IconClock size={22} color="#2563eb" />
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>
+                Pengaturan Jam Kerja Siswa PKL
+              </h3>
+            </div>
+            <p className="text-secondary text-sm" style={{ margin: '0 0 16px' }}>
+              Tentukan ketentuan Jam Masuk, Jam Pulang, dan toleransi kehadiran yang diinginkan pihak industri Anda.
+            </p>
+          </div>
+          <Link href="/dashboard/mitra/jadwal" className="btn btn-outline" style={{ padding: '9px 18px', fontSize: '0.9rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: '#fff' }}>
+            <IconClock size={16} />
+            <span>⚙️ Atur Jam Masuk & Pulang</span>
           </Link>
         </div>
       </div>

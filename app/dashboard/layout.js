@@ -22,6 +22,7 @@ import {
   IconQRCode,
   IconLogout,
   IconMenu,
+  IconClock,
 } from '@/components/Icons';
 
 // Navigation items per role using Line Icons
@@ -70,6 +71,7 @@ const navConfig = {
     Icon: IconMitra,
     items: [
       { label: 'Dashboard', Icon: IconDashboard, href: '/dashboard/mitra' },
+      { label: 'Jadwal Kerja PKL', Icon: IconClock, href: '/dashboard/mitra/jadwal' },
       { label: 'QR Presensi', Icon: IconQRCode, href: '/dashboard/mitra/qr-presensi' },
       { label: 'Data Presensi', Icon: IconPresensi, href: '/dashboard/mitra/presensi' },
       { label: 'Penilaian Siswa', Icon: IconNilai, href: '/dashboard/mitra/penilaian' },

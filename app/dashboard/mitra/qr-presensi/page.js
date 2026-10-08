@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 import QRCode from 'qrcode';
 import { IconQRCode, IconClock, IconCheck, IconEye } from '@/components/Icons';
 
@@ -10,6 +11,7 @@ export default function MitraQRPresensiPage() {
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [qrToken, setQrToken] = useState('');
   const [tipePresensi, setTipePresensi] = useState('MASUK');
+  const [jadwal, setJadwal] = useState({ jamMasuk: '08:00', jamPulang: '16:00', toleransiMenit: 15 });
   const [scannedStudents, setScannedStudents] = useState([
     { nama: 'Ahmad Fauzi', nisn: '0051234567', waktu: '07:45:12 WIB', status: 'Hadir Tepat Waktu' },
     { nama: 'Siti Rahmawati', nisn: '0057654321', waktu: '07:52:30 WIB', status: 'Hadir Tepat Waktu' },
@@ -17,6 +19,15 @@ export default function MitraQRPresensiPage() {
   ]);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const containerRef = useRef(null);
+
+  useEffect(() => {
+    fetch('/api/mitra/jadwal')
+      .then(res => res.json())
+      .then(json => {
+        if (json.data) setJadwal(json.data);
+      })
+      .catch(err => console.warn('Error load jadwal:', err));
+  }, []);
 
   const generateQRCode = async () => {
     const today = new Date().toISOString().split('T')[0];
@@ -56,15 +67,23 @@ export default function MitraQRPresensiPage() {
 
   return (
     <div ref={containerRef} style={{ background: isFullScreen ? '#0f172a' : 'transparent', padding: isFullScreen ? '24px' : '0', minHeight: isFullScreen ? '100vh' : 'auto', color: isFullScreen ? '#fff' : 'inherit' }}>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-header" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
         <div>
           <h1 className="page-title" style={{ color: isFullScreen ? '#fff' : 'inherit' }}>Generator QR Code Presensi</h1>
           <p className="page-subtitle" style={{ color: isFullScreen ? '#cbd5e1' : 'var(--text-secondary)' }}>
             Tampilkan QR Code ini di meja resepsionis atau layar monitor kantor agar siswa magang dapat memindai kehadiran.
           </p>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', marginTop: '6px', fontSize: '0.85rem', color: isFullScreen ? '#94a3b8' : 'var(--text-secondary)' }}>
+            <IconClock size={15} color="var(--primary)" />
+            <span>Jadwal Aktif Mitra: <strong>Masuk {jadwal.jamMasuk} WIB</strong> • <strong>Pulang {jadwal.jamPulang} WIB</strong></span>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={toggleFullScreen} className="btn btn-outline" id="btn-fullscreen-qr" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+          <Link href="/dashboard/mitra/jadwal" className="btn btn-outline" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: isFullScreen ? '#1e293b' : '#fff', color: isFullScreen ? '#fff' : 'inherit' }}>
+            <IconClock size={16} />
+            <span>⚙️ Atur Jam Kerja</span>
+          </Link>
+          <button onClick={toggleFullScreen} className="btn btn-outline" id="btn-fullscreen-qr" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: isFullScreen ? '#1e293b' : '#fff', color: isFullScreen ? '#fff' : 'inherit' }}>
             <IconEye size={16} />
             <span>{isFullScreen ? 'Keluar Layar Penuh' : 'Mode Layar Penuh (Kiosk)'}</span>
           </button>
