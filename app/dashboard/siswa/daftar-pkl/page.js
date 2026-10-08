@@ -11,6 +11,7 @@ import {
   IconUser,
   IconIdCard,
   IconUsers,
+  IconAlertCircle,
 } from '@/components/Icons';
 
 export default function SiswaDaftarPKLPage() {
@@ -34,6 +35,7 @@ export default function SiswaDaftarPKLPage() {
     biodataLengkap: true,
     mitraId: 'mitra-1',
     mitraNama: 'PT Telkom Indonesia Witel Riau',
+    statusPKL: 'SEDANG_PKL', // 'BELUM_GABUNG' | 'MENUNGGU_ACC' | 'SEDANG_PKL'
   });
 
   const [mitraList, setMitraList] = useState([]);
@@ -67,13 +69,23 @@ export default function SiswaDaftarPKLPage() {
     }
   };
 
-  const handleJoinMitra = async (mitraId, mitraNama) => {
+  const handleDaftarMitra = async (mitraId, mitraNama) => {
     if (!siswa.biodataLengkap) {
       setError('Wajib melengkapi biodata (Nama, Kelas, Jurusan, Tanggal Lahir) di menu Profile terlebih dahulu!');
       return;
     }
 
-    if (!confirm(`Konfirmasi pendaftaran magang di ${mitraNama}?`)) return;
+    if (siswa.statusPKL === 'MENUNGGU_ACC') {
+      setError('Anda masih memiliki permohonan pendaftaran yang sedang menunggu ACC mitra lain. Batalkan terlebih dahulu jika ingin berpindah.');
+      return;
+    }
+
+    if (siswa.statusPKL === 'SEDANG_PKL') {
+      setError('Anda sudah berstatus aktif magang PKL di suatu mitra.');
+      return;
+    }
+
+    if (!confirm(`Ajukan permohonan pendaftaran PKL ke ${mitraNama}? Permohonan ini akan ditinjau oleh pihak mitra dan menunggu ACC sebelum Anda dapat melakukan presensi.`)) return;
 
     setSubmitting(true);
     setError('');
@@ -83,18 +95,46 @@ export default function SiswaDaftarPKLPage() {
       const res = await fetch('/api/siswa/mitra-pkl', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'JOIN', mitraId }),
+        body: JSON.stringify({ action: 'DAFTAR', mitraId }),
       });
 
       const json = await res.json();
       if (!res.ok) {
-        setError(json.error || 'Gagal mendaftar ke tempat PKL.');
+        setError(json.error || 'Gagal mengajukan pendaftaran ke tempat PKL.');
       } else {
-        setMessage(json.message || `Berhasil mendaftar di ${mitraNama}!`);
+        setMessage(json.message || `Permohonan pendaftaran di ${mitraNama} berhasil dikirim! Menunggu ACC mitra.`);
         fetchData();
       }
     } catch (err) {
-      setError('Terjadi kendala jaringan saat mendaftar.');
+      setError('Terjadi kendala jaringan saat mengajukan pendaftaran.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleBatalkanPendaftaran = async () => {
+    if (!confirm('Batalkan permohonan pendaftaran ke tempat PKL ini? Setelah dibatalkan, Anda dapat memilih mitra lain.')) return;
+
+    setSubmitting(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const res = await fetch('/api/siswa/mitra-pkl', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'BATALKAN_PENDAFTARAN' }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error || 'Gagal membatalkan permohonan pendaftaran.');
+      } else {
+        setMessage('Permohonan pendaftaran berhasil dibatalkan. Silakan pilih tempat PKL baru.');
+        fetchData();
+      }
+    } catch (err) {
+      setError('Kendala jaringan saat membatalkan permohonan.');
     } finally {
       setSubmitting(false);
     }
@@ -121,7 +161,7 @@ export default function SiswaDaftarPKLPage() {
       if (!res.ok) {
         setError(json.error || 'Gagal menerima undangan.');
       } else {
-        setMessage(json.message || `Undangan dari ${mitraNama} diterima! Anda telah bergabung.`);
+        setMessage(json.message || `Undangan dari ${mitraNama} diterima! Anda telah resmi bergabung dan akses presensi kini aktif.`);
         fetchData();
       }
     } catch (err) {
@@ -132,7 +172,7 @@ export default function SiswaDaftarPKLPage() {
   };
 
   const handleLeaveMitra = async () => {
-    if (!confirm('Apakah Anda yakin ingin membatalkan/keluar dari tempat PKL ini untuk memilih tempat baru?')) return;
+    if (!confirm('Apakah Anda yakin ingin keluar dari tempat PKL ini untuk memilih tempat baru?')) return;
 
     setSubmitting(true);
     setError('');
@@ -149,7 +189,7 @@ export default function SiswaDaftarPKLPage() {
       if (!res.ok) {
         setError(json.error || 'Gagal mereset tempat PKL.');
       } else {
-        setMessage('Status tempat PKL berhasil direset. Silakan pilih tempat PKL baru.');
+        setMessage('Status tempat PKL berhasil direset. Silakan ajukan pendaftaran baru.');
         fetchData();
       }
     } catch (err) {
@@ -176,7 +216,7 @@ export default function SiswaDaftarPKLPage() {
         <div>
           <h1 className="page-title">Pendaftaran & Tempat PKL Mitra</h1>
           <p className="page-subtitle">
-            Temukan info lowongan magang yang dibuka langsung oleh mitra, atau terima undangan menggunakan Nomor ID unik Anda.
+            Daftar ke lowongan yang dibuka mitra lalu tunggu persetujuan (ACC), atau terima undangan via Nomor ID Unik.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -282,7 +322,7 @@ export default function SiswaDaftarPKLPage() {
               <div>
                 <strong style={{ color: '#b45309' }}>Biodata Diri Belum Lengkap!</strong>
                 <p style={{ margin: '2px 0 0', fontSize: '0.85rem', color: '#92400e' }}>
-                  Anda belum mengisi tanggal lahir atau data wajib lainnya. Lengkapi biodata terlebih dahulu agar pendaftaran tempat PKL dapat diproses.
+                  Anda belum melengkapi biodata wajib. Lengkapi biodata terlebih dahulu agar permohonan tempat PKL dapat diajukan dan di-ACC mitra.
                 </p>
               </div>
             </div>
@@ -293,8 +333,65 @@ export default function SiswaDaftarPKLPage() {
         </div>
       )}
 
-      {/* KARTU TEMPAT PKL YANG SEDANG DIIKUTI SISWA SAAT INI */}
-      {siswa.mitraId && (
+      {/* KONDISI 1: STATUS SEDANG MENUNGGU ACC MITRA */}
+      {siswa.statusPKL === 'MENUNGGU_ACC' && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 'var(--space-xl)',
+            background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+            border: '1.5px solid #fcd34d',
+            boxShadow: '0 4px 16px rgba(245, 158, 11, 0.1)',
+          }}
+        >
+          <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div
+                style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '12px',
+                  background: '#fef08a',
+                  color: '#b45309',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <IconClock size={26} />
+              </div>
+              <div>
+                <span className="badge badge-warning" style={{ fontSize: '0.72rem', marginBottom: '4px', background: '#d97706', color: '#fff' }}>
+                  ⏳ Status: Menunggu Persetujuan (ACC) dari Mitra
+                </span>
+                <h3 style={{ margin: '2px 0 0', fontSize: '1.25rem', fontWeight: 800, color: '#78350f' }}>
+                  {siswa.mitraNama}
+                </h3>
+                <p style={{ margin: '3px 0 0', fontSize: '0.85rem', color: '#92400e', maxWidth: '640px' }}>
+                  Permohonan pendaftaran magang Anda telah dikirim dan sedang dalam proses peninjauan oleh pihak mitra. 
+                  <strong> Akses Presensi Harian dan Logbook Mingguan akan otomatis terbuka segera setelah pembimbing mitra meng-ACC permohonan Anda.</strong>
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handleBatalkanPendaftaran}
+                disabled={submitting}
+                className="btn btn-sm btn-outline"
+                style={{ background: '#ffffff', color: '#dc2626', borderColor: '#fca5a5' }}
+              >
+                Batalkan Permohonan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* KONDISI 2: STATUS TELAH DI-ACC (AKTIF SEDANG PKL) */}
+      {siswa.statusPKL === 'SEDANG_PKL' && (
         <div
           className="card card-glow"
           style={{
@@ -322,13 +419,13 @@ export default function SiswaDaftarPKLPage() {
               </div>
               <div>
                 <span className="badge badge-success" style={{ fontSize: '0.72rem', marginBottom: '4px' }}>
-                  ✓ Status PKL: Aktif Terdaftar
+                  ✓ Status PKL: Telah Di-ACC & Resmi Aktif
                 </span>
                 <h3 style={{ margin: '2px 0 0', fontSize: '1.25rem', fontWeight: 800, color: '#14532d' }}>
                   {siswa.mitraNama}
                 </h3>
                 <p style={{ margin: '3px 0 0', fontSize: '0.85rem', color: '#166534' }}>
-                  Anda telah terdaftar di industri ini. Sekarang Anda sudah dapat mengakses menu <strong>Presensi</strong> dan <strong>Logbook Mingguan</strong>.
+                  Permohonan Anda telah disetujui (ACC) oleh industri ini. Sekarang Anda sudah memiliki akses penuh ke menu <strong>Presensi</strong> dan <strong>Logbook Mingguan</strong>.
                 </p>
               </div>
             </div>
@@ -351,210 +448,248 @@ export default function SiswaDaftarPKLPage() {
         </div>
       )}
 
-      {/* TABS SELECTOR */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: 'var(--space-lg)', borderBottom: '1px solid var(--border-primary)', paddingBottom: '12px', flexWrap: 'wrap' }}>
+      {/* NAVIGASI TABS */}
+      <div style={{ display: 'flex', gap: '12px', borderBottom: '1px solid var(--border-primary)', marginBottom: 'var(--space-xl)' }}>
         <button
-          className={`btn ${activeTab === 'DIREKTORI' ? 'btn-primary' : 'btn-outline'}`}
           onClick={() => setActiveTab('DIREKTORI')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'DIREKTORI' ? '3px solid var(--color-primary)' : '3px solid transparent',
+            color: activeTab === 'DIREKTORI' ? 'var(--color-primary)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'DIREKTORI' ? 700 : 500,
+            cursor: 'pointer',
+            fontSize: '0.95rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
         >
           <IconBriefcase size={18} />
-          <span>Daftar Kuota Tempat PKL ({filteredMitra.length})</span>
+          <span>Daftar Lowongan Tempat PKL Mitra</span>
+          <span className="badge badge-outline" style={{ fontSize: '0.7rem' }}>{mitraList.length}</span>
         </button>
 
         <button
-          className={`btn ${activeTab === 'UNDANGAN' ? 'btn-primary' : 'btn-outline'}`}
           onClick={() => setActiveTab('UNDANGAN')}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', position: 'relative' }}
+          style={{
+            padding: '12px 20px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'UNDANGAN' ? '3px solid var(--color-primary)' : '3px solid transparent',
+            color: activeTab === 'UNDANGAN' ? 'var(--color-primary)' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'UNDANGAN' ? 700 : 500,
+            cursor: 'pointer',
+            fontSize: '0.95rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
         >
-          <span>📩 Undangan dari Mitra PKL</span>
+          <IconIdCard size={18} />
+          <span>Undangan Masuk Dari Mitra</span>
           {undanganList.filter(u => u.status === 'PENDING').length > 0 && (
-            <span
-              style={{
-                background: '#ef4444',
-                color: '#fff',
-                borderRadius: '999px',
-                padding: '2px 7px',
-                fontSize: '0.7rem',
-                fontWeight: 700,
-              }}
-            >
+            <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>
               {undanganList.filter(u => u.status === 'PENDING').length}
             </span>
           )}
         </button>
       </div>
 
-      {/* TAB 1: DIREKTORI TEMPAT PKL YANG MEMBUKA LOWONGAN */}
+      {/* TAB 1: DIREKTORI TEMPAT PKL MITRA */}
       {activeTab === 'DIREKTORI' && (
         <div>
-          {/* Search & Filter Bar */}
-          <div className="card" style={{ marginBottom: 'var(--space-lg)', background: '#ffffff' }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center' }}>
-              <div style={{ flex: '1 1 280px' }}>
+          {/* FILTER & PENCARIAN */}
+          <div className="card" style={{ marginBottom: 'var(--space-xl)', background: '#ffffff' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px' }}>
+              <div>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Cari Nama Mitra / Bidang / Alamat</label>
                 <input
                   type="text"
-                  className="form-control"
-                  placeholder="🔍 Cari nama mitra, bidang industri, atau lokasi..."
+                  placeholder="Ketik pencarian..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
+                  className="form-input"
                 />
               </div>
 
-              <div style={{ minWidth: '220px' }}>
+              <div>
+                <label className="form-label" style={{ fontWeight: 600, fontSize: '0.85rem' }}>Filter Sesuai Jurusan</label>
                 <select
-                  className="form-control"
                   value={filterJurusan}
                   onChange={(e) => setFilterJurusan(e.target.value)}
+                  className="form-input"
                 >
-                  <option value="ALL">Semua Bidang Jurusan</option>
-                  <option value="Teknik Komputer">Teknik Komputer & Jaringan</option>
-                  <option value="Rekayasa Perangkat">Rekayasa Perangkat Lunak</option>
+                  <option value="ALL">Semua Jurusan</option>
+                  <option value="Teknik Komputer dan Jaringan">Teknik Komputer dan Jaringan (TKJ)</option>
+                  <option value="Rekayasa Perangkat Lunak">Rekayasa Perangkat Lunak (RPL)</option>
                   <option value="Multimedia">Multimedia / DKV</option>
-                  <option value="Sepeda Motor">Teknik Sepeda Motor</option>
-                  <option value="Akuntansi">Akuntansi Keuangan</option>
-                  <option value="Manajemen">Manajemen Perkantoran</option>
+                  <option value="Teknik Bisnis Sepeda Motor">Teknik Bisnis Sepeda Motor (TBSM)</option>
+                  <option value="Akuntansi">Akuntansi & Keuangan Lembaga (AKL)</option>
                 </select>
               </div>
             </div>
           </div>
 
-          {/* Grid Daftar Tempat PKL */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: 'var(--space-lg)' }}>
+          {/* GRID MITRA LIST */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(360px, 1fr))', gap: '20px' }}>
             {filteredMitra.map((m) => {
-              const isCurrent = siswa.mitraId === m.id;
-              const sisaKuota = m.kuotaTotal - m.kuotaTerisi;
-              const percentFilled = Math.round((m.kuotaTerisi / m.kuotaTotal) * 100);
+              const isCurrentJoined = siswa.mitraId === m.id && siswa.statusPKL === 'SEDANG_PKL';
+              const isWaitingACC = siswa.mitraId === m.id && siswa.statusPKL === 'MENUNGGU_ACC';
+              const sisaKuota = Math.max(0, m.kuotaTotal - m.kuotaTerisi);
+              const kuotaPersen = Math.round((m.kuotaTerisi / m.kuotaTotal) * 100);
 
               return (
                 <div
                   key={m.id}
                   className="card"
                   style={{
-                    background: '#ffffff',
-                    border: isCurrent ? '2px solid var(--primary)' : '1px solid var(--border-primary)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',
+                    border: isCurrentJoined
+                      ? '2px solid #22c55e'
+                      : isWaitingACC
+                      ? '2px solid #f59e0b'
+                      : '1px solid var(--border-primary)',
+                    background: '#ffffff',
                     position: 'relative',
                   }}
                 >
-                  {isCurrent && (
-                    <span
-                      style={{
-                        position: 'absolute',
-                        top: '12px',
-                        right: '12px',
-                        background: '#dcfce7',
-                        color: '#15803d',
-                        fontSize: '0.72rem',
-                        fontWeight: 700,
-                        padding: '3px 8px',
-                        borderRadius: '999px',
-                        border: '1px solid #86efac',
-                      }}
-                    >
-                      ✓ Tempat PKL Anda Saat Ini
-                    </span>
-                  )}
-
                   <div>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', marginBottom: '12px' }}>
-                      <div
-                        style={{
-                          width: '44px',
-                          height: '44px',
-                          borderRadius: '10px',
-                          background: 'var(--role-badge-bg)',
-                          color: 'var(--primary)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontWeight: 800,
-                          fontSize: '1.1rem',
-                          flexShrink: 0,
-                        }}
-                      >
-                        {m.nama.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div style={{ paddingRight: isCurrent ? '120px' : '0' }}>
-                        <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                          {m.nama}
-                        </h3>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 600 }}>
-                          {m.bidang}
+                    {/* Header Mitra */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '10px', marginBottom: '8px' }}>
+                      <span className="badge badge-info" style={{ fontSize: '0.72rem', fontWeight: 600 }}>
+                        {m.bidang}
+                      </span>
+                      {isCurrentJoined ? (
+                        <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>
+                          ✓ Mitra Anda (Di-ACC)
                         </span>
-                      </div>
+                      ) : isWaitingACC ? (
+                        <span className="badge badge-warning" style={{ fontSize: '0.7rem', background: '#d97706', color: '#fff' }}>
+                          ⏳ Menunggu ACC
+                        </span>
+                      ) : (
+                        <span className={`badge ${sisaKuota > 0 ? 'badge-primary' : 'badge-danger'}`} style={{ fontSize: '0.7rem' }}>
+                          {sisaKuota > 0 ? `${sisaKuota} Slot Tersisa` : 'Penuh'}
+                        </span>
+                      )}
                     </div>
 
-                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.5', margin: '0 0 14px' }}>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 700, margin: '6px 0 4px', color: 'var(--text-primary)' }}>
+                      {m.nama}
+                    </h3>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '12px' }}>
+                      <IconMapPin size={15} style={{ flexShrink: 0 }} />
+                      <span>{m.alamat}</span>
+                    </div>
+
+                    <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '14px' }}>
                       {m.deskripsi}
                     </p>
 
-                    {/* Meta info */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '14px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <IconMapPin size={14} color="var(--primary)" />
-                        <span>{m.alamat}</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <IconClock size={14} color="#ea580c" />
-                        <span>Jam Kerja: <strong>{m.jamMasuk} - {m.jamPulang} WIB</strong> ({m.hariKerja})</span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <IconUsers size={14} color="#059669" />
-                        <span>Kontak Pembimbing: {m.kontakPerson}</span>
-                      </div>
-                    </div>
-
                     {/* Kuota Bar */}
-                    <div style={{ padding: '10px', background: 'var(--bg-primary)', borderRadius: 'var(--radius-md)', marginBottom: '14px' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', fontWeight: 600, marginBottom: '4px' }}>
-                        <span>Kapasitas Kuota Magang:</span>
-                        <span style={{ color: sisaKuota > 0 ? '#059669' : '#dc2626' }}>
-                          {m.kuotaTerisi} / {m.kuotaTotal} ({sisaKuota > 0 ? `Sisa ${sisaKuota} Kuota` : 'Penuh'})
-                        </span>
+                    <div style={{ marginBottom: '14px', background: 'var(--bg-primary)', padding: '10px 12px', borderRadius: 'var(--radius-md)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '6px' }}>
+                        <span style={{ fontWeight: 600 }}>Kuota Pendaftar Magang:</span>
+                        <span style={{ fontWeight: 700 }}>{m.kuotaTerisi} dari {m.kuotaTotal} siswa</span>
                       </div>
-                      <div style={{ width: '100%', height: '6px', background: '#e2e8f0', borderRadius: '999px', overflow: 'hidden' }}>
+                      <div style={{ height: '7px', background: '#e2e8f0', borderRadius: '4px', overflow: 'hidden' }}>
                         <div
                           style={{
-                            width: `${percentFilled}%`,
                             height: '100%',
-                            background: percentFilled >= 100 ? '#ef4444' : percentFilled >= 70 ? '#f59e0b' : '#10b981',
+                            width: `${kuotaPersen}%`,
+                            background: kuotaPersen >= 100 ? '#ef4444' : kuotaPersen >= 80 ? '#f59e0b' : '#3b82f6',
+                            borderRadius: '4px',
+                            transition: 'width 0.4s ease',
                           }}
                         />
                       </div>
                     </div>
 
+                    {/* Jadwal Jam Masuk & Pulang */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '12px' }}>
+                      <IconClock size={16} style={{ color: 'var(--color-primary)' }} />
+                      <span><strong>Jadwal:</strong> {m.jamMasuk} - {m.jamPulang} WIB ({m.hariKerja})</span>
+                    </div>
+
                     {/* Fasilitas */}
-                    {m.fasilitas && (
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '14px' }}>
-                        {m.fasilitas.map((f, i) => (
-                          <span key={i} style={{ fontSize: '0.72rem', background: '#f1f5f9', color: '#475569', padding: '2px 8px', borderRadius: '4px' }}>
-                            ✓ {f}
-                          </span>
-                        ))}
+                    {m.fasilitas && m.fasilitas.length > 0 && (
+                      <div style={{ marginBottom: '14px' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                          Fasilitas PKL:
+                        </span>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                          {m.fasilitas.map((f, idx) => (
+                            <span
+                              key={idx}
+                              style={{
+                                fontSize: '0.75rem',
+                                background: '#f1f5f9',
+                                color: '#334155',
+                                padding: '3px 8px',
+                                borderRadius: '4px',
+                                fontWeight: 500,
+                              }}
+                            >
+                              ✓ {f}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     )}
+
+                    {/* Narahubung */}
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', borderTop: '1px dashed var(--border-primary)', paddingTop: '10px', marginBottom: '14px' }}>
+                      <span>Narahubung: <strong>{m.kontakPerson}</strong></span>
+                    </div>
                   </div>
 
-                  {/* Actions */}
-                  <div>
-                    {isCurrent ? (
+                  {/* Tombol Aksi */}
+                  <div style={{ marginTop: '10px' }}>
+                    {isCurrentJoined ? (
                       <div style={{ display: 'flex', gap: '8px' }}>
-                        <Link href="/dashboard/siswa/presensi" className="btn btn-sm btn-primary w-full" style={{ textAlign: 'center' }}>
-                          ✓ Buka Presensi Di Mitra Ini
+                        <Link href="/dashboard/siswa/presensi" className="btn btn-primary btn-sm w-full" style={{ textAlign: 'center' }}>
+                          📷 Buka Presensi
                         </Link>
                       </div>
+                    ) : isWaitingACC ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        <div style={{ textAlign: 'center', padding: '8px', background: '#fef3c7', color: '#b45309', borderRadius: '6px', fontSize: '0.8rem', fontWeight: 700 }}>
+                          ⏳ Menunggu ACC Mitra
+                        </div>
+                        <button
+                          type="button"
+                          disabled={submitting}
+                          onClick={handleBatalkanPendaftaran}
+                          className="btn btn-sm btn-outline w-full"
+                          style={{ color: '#dc2626', borderColor: '#fca5a5' }}
+                        >
+                          Batalkan Pendaftaran
+                        </button>
+                      </div>
+                    ) : siswa.statusPKL === 'MENUNGGU_ACC' ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="btn btn-sm btn-outline w-full"
+                        style={{ padding: '9px 16px', opacity: 0.6 }}
+                        title="Anda sedang menunggu ACC dari mitra lain."
+                      >
+                        Sedang Menunggu ACC Mitra Lain
+                      </button>
                     ) : (
                       <button
                         type="button"
                         disabled={submitting || sisaKuota <= 0}
-                        onClick={() => handleJoinMitra(m.id, m.nama)}
+                        onClick={() => handleDaftarMitra(m.id, m.nama)}
                         className={`btn btn-sm w-full ${sisaKuota <= 0 ? 'btn-outline' : 'btn-primary'}`}
                         style={{ padding: '9px 16px', fontWeight: 700 }}
                       >
-                        {sisaKuota <= 0 ? '✕ Kuota Penuh' : '🏢 Gabung & Pilih Mitra Ini'}
+                        {sisaKuota <= 0 ? '✕ Kuota Penuh' : '🏢 Daftar & Ajukan ke Mitra'}
                       </button>
                     )}
                   </div>
@@ -581,7 +716,7 @@ export default function SiswaDaftarPKLPage() {
                 <span style={{ fontSize: '2.5rem' }}>📭</span>
                 <h4 style={{ margin: '8px 0 4px', fontWeight: 700 }}>Belum Ada Undangan Masuk</h4>
                 <p className="text-secondary text-sm" style={{ maxWidth: '480px', margin: '0 auto 16px' }}>
-                  Belum ada mitra yang memasukkan nomor ID unik Anda. Anda dapat mendaftar langsung melalui tab <strong>&ldquo;Daftar Kuota Tempat PKL&rdquo;</strong> di atas atau bagikan nomor ID unik Anda ke pembimbing mitra.
+                  Belum ada mitra yang memasukkan nomor ID unik Anda. Anda dapat mendaftar langsung melalui tab <strong>&ldquo;Daftar Lowongan Tempat PKL Mitra&rdquo;</strong> di atas atau bagikan nomor ID unik Anda ke pihak perusahaan.
                 </p>
                 <button onClick={() => setActiveTab('DIREKTORI')} className="btn btn-primary btn-sm">
                   Lihat Tempat PKL Yang Buka Kuota
@@ -620,7 +755,7 @@ export default function SiswaDaftarPKLPage() {
                     <div>
                       {u.status === 'ACCEPTED' ? (
                         <span className="badge badge-success" style={{ padding: '6px 14px' }}>
-                          ✓ Undangan Diterima
+                          ✓ Undangan Diterima & Di-ACC
                         </span>
                       ) : (
                         <button

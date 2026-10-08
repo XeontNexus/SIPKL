@@ -26,6 +26,8 @@ import {
   IconUser,
   IconBriefcase,
 } from '@/components/Icons';
+import NotificationDropdown from '@/components/NotificationDropdown';
+
 
 // Navigation items per role using Line Icons
 const navConfig = {
@@ -245,12 +247,15 @@ function DashboardShell({ children }) {
               <span>Portal {currentNav?.label}</span>
             </div>
           </div>
-          <div className="navbar-right">
+          <div className="navbar-right" style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <NotificationDropdown role={role} userName={userName} />
+            <div style={{ height: '20px', width: '1px', background: 'var(--border)' }} />
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
               Halo, <strong style={{ color: 'var(--text-primary)' }}>{userName?.split(' ')[0]}</strong>
             </span>
           </div>
         </nav>
+
 
         {/* Main Content */}
         <main className="dashboard-main">

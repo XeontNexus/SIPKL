@@ -570,21 +570,25 @@ export default function SiswaPresensiPage() {
                   )}
                 </div>
 
-                <div style={{ padding: '12px', background: '#ffffff', borderRadius: 'var(--radius-md)', border: prerequisite.hasJoinedMitra ? '1.5px solid #86efac' : '1.5px solid #fde68a' }}>
+                <div style={{ padding: '12px', background: '#ffffff', borderRadius: 'var(--radius-md)', border: prerequisite.hasJoinedMitra ? '1.5px solid #86efac' : prerequisite.isPendingACC ? '1.5px solid #fcd34d' : '1.5px solid #fca5a5' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Tahap 2: Gabung Mitra PKL</span>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Tahap 2: ACC Dari Mitra PKL</span>
                     {prerequisite.hasJoinedMitra ? (
-                      <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>✓ Selesai ({studentProfile?.mitraNama})</span>
+                      <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>✓ Di-ACC ({studentProfile?.mitraNama})</span>
+                    ) : prerequisite.isPendingACC ? (
+                      <span className="badge badge-warning" style={{ fontSize: '0.7rem', background: '#d97706', color: '#fff' }}>⏳ Menunggu ACC</span>
                     ) : (
-                      <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>Belum Gabung</span>
+                      <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>Belum Mendaftar</span>
                     )}
                   </div>
                   <p style={{ margin: '0 0 8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    Pilih tempat magang industri atau terima undangan mitra.
+                    {prerequisite.isPendingACC
+                      ? `Permohonan di ${studentProfile?.mitraNama || 'mitra'} sedang menunggu verifikasi & ACC mitra.`
+                      : 'Daftar ke lowongan mitra atau terima undangan ID Unik.'}
                   </p>
                   {!prerequisite.hasJoinedMitra && (
                     <Link href="/dashboard/siswa/daftar-pkl" className="btn btn-sm btn-primary w-full" style={{ fontSize: '0.78rem' }}>
-                      👉 Buka Menu Daftar Tempat PKL
+                      {prerequisite.isPendingACC ? '👉 Cek Status Pendaftaran PKL' : '👉 Buka Menu Daftar Tempat PKL'}
                     </Link>
                   )}
                 </div>
@@ -593,6 +597,7 @@ export default function SiswaPresensiPage() {
           </div>
         </div>
       )}
+
 
       {/* KARTU JADWAL KERJA DITENTUKAN OLEH MITRA INDUSTRI */}
       <div
