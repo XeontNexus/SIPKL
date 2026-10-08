@@ -10,6 +10,8 @@ import {
   IconNilai,
   IconQRCode,
   IconPresensi,
+  IconIdCard,
+  IconAlert,
 } from '@/components/Icons';
 
 export default function MitraDashboard() {
@@ -22,6 +24,49 @@ export default function MitraDashboard() {
   });
   const [siswaList, setSiswaList] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Invite student via Unique ID
+  const [showInviteForm, setShowInviteForm] = useState(false);
+  const [inviteIdUnik, setInviteIdUnik] = useState('');
+  const [invitePesan, setInvitePesan] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteFeedback, setInviteFeedback] = useState('');
+  const [inviteError, setInviteError] = useState('');
+
+  const handleSendInvite = async (e) => {
+    e.preventDefault();
+    if (!inviteIdUnik.trim()) return;
+
+    setInviteLoading(true);
+    setInviteFeedback('');
+    setInviteError('');
+
+    try {
+      const res = await fetch('/api/mitra/invite-siswa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          idUnik: inviteIdUnik.trim(),
+          mitraNama: session?.user?.name || 'PT Telkom Indonesia Witel Riau',
+          mitraId: session?.user?.id || 'mitra-1',
+          pesan: invitePesan || 'Selamat! Anda diundang magang di instansi kami. Silakan terima undangan ini untuk bergabung.',
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        setInviteError(json.error || 'Gagal mengirimkan undangan.');
+      } else {
+        setInviteFeedback(json.message || 'Undangan berhasil dikirim!');
+        setInviteIdUnik('');
+        setInvitePesan('');
+      }
+    } catch (err) {
+      setInviteError('Terjadi kesalahan jaringan.');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -131,13 +176,104 @@ export default function MitraDashboard() {
 
       {/* Student List in this Mitra */}
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 style={{ fontSize: '1.15rem', fontWeight: 700 }}>Daftar Siswa Magang Aktif</h3>
-          <Link href="/dashboard/mitra/penilaian" className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-            <IconNilai size={15} />
-            <span>Input Nilai Siswa</span>
-          </Link>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          <div>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: 0 }}>Daftar Siswa Magang Aktif</h3>
+            <span className="text-xs text-secondary">Kelola peserta magang industri di perusahaan Anda</span>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            <button
+              onClick={() => setShowInviteForm(!showInviteForm)}
+              className="btn btn-sm btn-primary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+            >
+              <IconIdCard size={15} />
+              <span>{showInviteForm ? '✕ Tutup Form Undangan' : '➕ Undang Siswa via ID Unik'}</span>
+            </button>
+            <Link href="/dashboard/mitra/penilaian" className="btn btn-outline btn-sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              <IconNilai size={15} />
+              <span>Input Nilai Siswa</span>
+            </Link>
+          </div>
         </div>
+
+        {/* Form Undang Siswa via ID Unik */}
+        {showInviteForm && (
+          <div
+            style={{
+              padding: '18px',
+              background: '#f8fafc',
+              border: '1.5px solid #cbd5e1',
+              borderRadius: 'var(--radius-lg)',
+              marginBottom: '20px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+              <span style={{ fontSize: '1.2rem' }}>📩</span>
+              <h4 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800 }}>Kirim Undangan Bergabung ke Siswa</h4>
+            </div>
+            <p style={{ margin: '0 0 14px', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              Masukkan Nomor ID Unik siswa (contoh: <code>PKL-SISWA-00512</code>). Siswa akan langsung menerima notifikasi undangan di akun SIPKL mereka untuk bergabung ke perusahaan Anda.
+            </p>
+
+            {inviteFeedback && (
+              <div className="alert alert-success" style={{ marginBottom: '14px', padding: '10px 14px', fontSize: '0.88rem' }}>
+                ✓ {inviteFeedback}
+              </div>
+            )}
+
+            {inviteError && (
+              <div className="alert alert-danger" style={{ marginBottom: '14px', padding: '10px 14px', fontSize: '0.88rem' }}>
+                ✕ {inviteError}
+              </div>
+            )}
+
+            <form onSubmit={handleSendInvite}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.82rem' }}>Nomor ID Unik Siswa *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Contoh: PKL-SISWA-00512"
+                    className="form-control"
+                    value={inviteIdUnik}
+                    onChange={(e) => setInviteIdUnik(e.target.value)}
+                    style={{ fontFamily: 'monospace', fontWeight: 700 }}
+                  />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.82rem' }}>Pesan Undangan (Opsional)</label>
+                  <input
+                    type="text"
+                    placeholder="Catatan sambutan atau penempatan divisi magang..."
+                    className="form-control"
+                    value={invitePesan}
+                    onChange={(e) => setInvitePesan(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowInviteForm(false)}
+                  className="btn btn-sm btn-ghost"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={inviteLoading || !inviteIdUnik.trim()}
+                  className="btn btn-sm btn-primary"
+                  style={{ padding: '8px 18px', fontWeight: 700 }}
+                >
+                  {inviteLoading ? 'Mengirim...' : '🚀 Kirim Undangan Join'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
 
         <div className="table-responsive">
           <table className="table">

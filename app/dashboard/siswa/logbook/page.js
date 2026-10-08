@@ -1,11 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { IconAlert, IconCheck, IconBriefcase, IconUser } from '@/components/Icons';
 
 export default function SiswaLogbookPage() {
   const [logbooks, setLogbooks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [prerequisite, setPrerequisite] = useState({
+    isReady: true,
+    isBiodataComplete: true,
+    hasJoinedMitra: true,
+  });
+  const [studentProfile, setStudentProfile] = useState(null);
+  const [errorMessage, setErrorMessage] = useState('');
+
   const [formData, setFormData] = useState({
     mingguKe: '',
     tanggalMulai: '',
@@ -18,7 +28,21 @@ export default function SiswaLogbookPage() {
 
   useEffect(() => {
     fetchLogbooks();
+    fetchStudentPrerequisite();
   }, []);
+
+  const fetchStudentPrerequisite = async () => {
+    try {
+      const res = await fetch('/api/siswa/profile');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) setStudentProfile(json.data);
+        if (json.prerequisite) setPrerequisite(json.prerequisite);
+      }
+    } catch (err) {
+      console.warn('Error load prerequisite:', err);
+    }
+  };
 
   const fetchLogbooks = async () => {
     try {
@@ -36,7 +60,17 @@ export default function SiswaLogbookPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!prerequisite.isBiodataComplete) {
+      setErrorMessage('Anda wajib melengkapi biodata (Nama, Kelas, Jurusan, Tanggal Lahir) di menu Profile sebelum mengisi logbook.');
+      return;
+    }
+    if (!prerequisite.hasJoinedMitra) {
+      setErrorMessage('Anda belum bergabung dengan Mitra PKL mana pun. Pilih tempat PKL di menu Daftar Tempat PKL terlebih dahulu.');
+      return;
+    }
+
     setFormLoading(true);
+    setErrorMessage('');
     try {
       const res = await fetch('/api/logbook', {
         method: 'POST',
@@ -67,15 +101,95 @@ export default function SiswaLogbookPage() {
 
   return (
     <div>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div className="page-header" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
         <div>
-          <h1 className="page-title">Logbook Mingguan</h1>
-          <p className="page-subtitle">Catat kegiatan PKL setiap minggu</p>
+          <h1 className="page-title">Logbook Mingguan Siswa</h1>
+          <p className="page-subtitle">
+            Catat jurnal kegiatan pekerjaan mingguan selama masa PKL di industri mitra.
+          </p>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
-          {showForm ? '✕ Tutup Form' : '➕ Tambah Logbook'}
-        </button>
+        {prerequisite.isReady ? (
+          <button className="btn btn-primary" onClick={() => setShowForm(!showForm)}>
+            {showForm ? '✕ Tutup Form' : '➕ Tambah Logbook'}
+          </button>
+        ) : (
+          <span className="badge badge-warning" style={{ padding: '8px 12px', fontSize: '0.8rem' }}>
+            🔒 Form Logbook Terkunci
+          </span>
+        )}
       </div>
+
+      {/* PREREQUISITE GATEKEEPER BANNER */}
+      {!prerequisite.isReady && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 'var(--space-lg)',
+            background: '#fffbeb',
+            border: '2px solid #f59e0b',
+            borderRadius: 'var(--radius-lg)',
+            padding: '20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+            <IconAlert size={30} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
+            <div style={{ flex: 1 }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: '1.15rem', fontWeight: 800, color: '#92400e' }}>
+                Perhatian: Pengisian Logbook Masih Terkunci
+              </h3>
+              <p style={{ margin: '0 0 14px', fontSize: '0.88rem', color: '#78350f', lineHeight: '1.5' }}>
+                Sebelum dapat membuat catatan jurnal dan logbook mingguan, Anda wajib menyelesaikan 2 syarat administrasi berikut:
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+                <div style={{ padding: '12px', background: '#ffffff', borderRadius: 'var(--radius-md)', border: prerequisite.isBiodataComplete ? '1.5px solid #86efac' : '1.5px solid #fde68a' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Tahap 1: Biodata Diri</span>
+                    {prerequisite.isBiodataComplete ? (
+                      <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>✓ Selesai</span>
+                    ) : (
+                      <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>Wajib Diisi</span>
+                    )}
+                  </div>
+                  <p style={{ margin: '0 0 8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    Nama Lengkap, Kelas, Jurusan, Tanggal Lahir, & NISN.
+                  </p>
+                  {!prerequisite.isBiodataComplete && (
+                    <Link href="/dashboard/siswa/profile" className="btn btn-sm btn-primary w-full" style={{ fontSize: '0.78rem' }}>
+                      👉 Lengkapi di Menu Profile
+                    </Link>
+                  )}
+                </div>
+
+                <div style={{ padding: '12px', background: '#ffffff', borderRadius: 'var(--radius-md)', border: prerequisite.hasJoinedMitra ? '1.5px solid #86efac' : '1.5px solid #fde68a' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Tahap 2: Gabung Mitra PKL</span>
+                    {prerequisite.hasJoinedMitra ? (
+                      <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>✓ Selesai ({studentProfile?.mitraNama})</span>
+                    ) : (
+                      <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>Belum Gabung</span>
+                    )}
+                  </div>
+                  <p style={{ margin: '0 0 8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    Pilih tempat magang industri atau terima undangan mitra.
+                  </p>
+                  {!prerequisite.hasJoinedMitra && (
+                    <Link href="/dashboard/siswa/daftar-pkl" className="btn btn-sm btn-primary w-full" style={{ fontSize: '0.78rem' }}>
+                      👉 Buka Menu Daftar Tempat PKL
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="alert alert-danger" style={{ marginBottom: 'var(--space-md)' }}>
+          {errorMessage}
+        </div>
+      )}
 
       {/* Form */}
       {showForm && (

@@ -298,3 +298,24 @@ export function IconExternalLink({ size = 20, className = '', ...props }) {
   );
 }
 
+export function IconBriefcase({ size = 20, className = '', ...props }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <rect width="20" height="14" x="2" y="7" rx="2" />
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+    </svg>
+  );
+}
+
+export function IconIdCard({ size = 20, className = '', ...props }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>
+      <rect width="20" height="14" x="2" y="5" rx="2" />
+      <circle cx="8" cy="11" r="2" />
+      <path d="M14 9h4" />
+      <path d="M14 13h3" />
+      <path d="M5 16a3 3 0 0 1 6 0" />
+    </svg>
+  );
+}
+

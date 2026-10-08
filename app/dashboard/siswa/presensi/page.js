@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import Link from 'next/link';
 import {
   IconCamera,
   IconQRCode,
@@ -15,6 +16,8 @@ import {
   IconNavigation,
   IconExternalLink,
   IconMitra,
+  IconBriefcase,
+  IconUser,
 } from '@/components/Icons';
 
 export default function SiswaPresensiPage() {
@@ -75,14 +78,35 @@ export default function SiswaPresensiPage() {
 
   const todayIso = new Date().toISOString().split('T')[0];
 
+  const [studentProfile, setStudentProfile] = useState(null);
+  const [prerequisite, setPrerequisite] = useState({
+    isReady: true,
+    isBiodataComplete: true,
+    hasJoinedMitra: true,
+  });
+
   useEffect(() => {
     fetchPresensiData();
     fetchJadwalMitra();
+    fetchSiswaProfile();
     detectLocation();
     return () => {
       stopCameraScanner();
     };
   }, []);
+
+  const fetchSiswaProfile = async () => {
+    try {
+      const res = await fetch('/api/siswa/profile');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.data) setStudentProfile(json.data);
+        if (json.prerequisite) setPrerequisite(json.prerequisite);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch student prerequisite:', err);
+    }
+  };
 
   const fetchJadwalMitra = async () => {
     try {
@@ -385,6 +409,15 @@ export default function SiswaPresensiPage() {
   // SUBMIT PRESENSI HADIR (Scan / Manual)
   // ----------------------------------------------------
   const submitPresensi = async (payload) => {
+    if (!prerequisite.isBiodataComplete) {
+      setError('Akses Presensi Terkunci: Anda wajib melengkapi biodata (Nama, Kelas, Jurusan, Tanggal Lahir) di menu Profile terlebih dahulu!');
+      return;
+    }
+    if (!prerequisite.hasJoinedMitra) {
+      setError('Akses Presensi Terkunci: Anda belum terdaftar di Mitra Industri mana pun! Silakan pilih tempat PKL di menu Daftar Tempat PKL.');
+      return;
+    }
+
     setSubmitting(true);
     setError('');
     setResult(null);
@@ -395,8 +428,8 @@ export default function SiswaPresensiPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...payload,
-          siswaNama: session?.user?.name || 'Ahmad Fauzi',
-          nisn: '0051234567',
+          siswaNama: session?.user?.name || studentProfile?.nama || 'Ahmad Fauzi',
+          nisn: studentProfile?.nisn || '0051234567',
           latitude: geoData.latitude,
           longitude: geoData.longitude,
           accuracy: geoData.accuracy,
@@ -425,6 +458,10 @@ export default function SiswaPresensiPage() {
   // ----------------------------------------------------
   const handleIzinSubmit = async (e) => {
     e.preventDefault();
+    if (!prerequisite.isReady) {
+      setError('Wajib melengkapi biodata dan terdaftar di Mitra PKL sebelum dapat mengajukan izin.');
+      return;
+    }
     if (!formIzin.alasan) {
       setError('Mohon tuliskan alasan izin atau keterangan sakit Anda.');
       return;
@@ -490,6 +527,72 @@ export default function SiswaPresensiPage() {
           <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-primary)' }}>{todayStr}</span>
         </div>
       </div>
+
+      {/* PREREQUISITE GATEKEEPER BANNER */}
+      {!prerequisite.isReady && (
+        <div
+          className="card"
+          style={{
+            marginBottom: 'var(--space-lg)',
+            background: '#fffbeb',
+            border: '2px solid #f59e0b',
+            borderRadius: 'var(--radius-lg)',
+            padding: '20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+            <IconAlert size={30} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
+            <div style={{ flex: 1 }}>
+              <h3 style={{ margin: '0 0 4px', fontSize: '1.15rem', fontWeight: 800, color: '#92400e' }}>
+                Perhatian: Fitur Presensi Terkunci Sementara
+              </h3>
+              <p style={{ margin: '0 0 14px', fontSize: '0.88rem', color: '#78350f', lineHeight: '1.5' }}>
+                Sesuai ketentuan sekolah, sebelum dapat melakukan presensi harian siswa wajib menyelesaikan 2 tahapan berikut:
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
+                <div style={{ padding: '12px', background: '#ffffff', borderRadius: 'var(--radius-md)', border: prerequisite.isBiodataComplete ? '1.5px solid #86efac' : '1.5px solid #fde68a' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Tahap 1: Biodata Diri</span>
+                    {prerequisite.isBiodataComplete ? (
+                      <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>✓ Selesai</span>
+                    ) : (
+                      <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>Wajib Diisi</span>
+                    )}
+                  </div>
+                  <p style={{ margin: '0 0 8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    Nama Lengkap, Kelas, Jurusan, Tanggal Lahir, & NISN.
+                  </p>
+                  {!prerequisite.isBiodataComplete && (
+                    <Link href="/dashboard/siswa/profile" className="btn btn-sm btn-primary w-full" style={{ fontSize: '0.78rem' }}>
+                      👉 Lengkapi di Menu Profile
+                    </Link>
+                  )}
+                </div>
+
+                <div style={{ padding: '12px', background: '#ffffff', borderRadius: 'var(--radius-md)', border: prerequisite.hasJoinedMitra ? '1.5px solid #86efac' : '1.5px solid #fde68a' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 700, textTransform: 'uppercase' }}>Tahap 2: Gabung Mitra PKL</span>
+                    {prerequisite.hasJoinedMitra ? (
+                      <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>✓ Selesai ({studentProfile?.mitraNama})</span>
+                    ) : (
+                      <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>Belum Gabung</span>
+                    )}
+                  </div>
+                  <p style={{ margin: '0 0 8px', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                    Pilih tempat magang industri atau terima undangan mitra.
+                  </p>
+                  {!prerequisite.hasJoinedMitra && (
+                    <Link href="/dashboard/siswa/daftar-pkl" className="btn btn-sm btn-primary w-full" style={{ fontSize: '0.78rem' }}>
+                      👉 Buka Menu Daftar Tempat PKL
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* KARTU JADWAL KERJA DITENTUKAN OLEH MITRA INDUSTRI */}
       <div
