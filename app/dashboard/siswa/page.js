@@ -89,7 +89,7 @@ export default function SiswaDashboard() {
           <div style={{ color: 'var(--primary)', marginBottom: '12px' }}>
             <IconLogbook size={32} />
           </div>
-          <h4 style={{ marginBottom: '4px', color: 'var(--text-primary)' }}>Logbook Mingguan</h4>
+          <h4 style={{ marginBottom: '4px', color: 'var(--text-primary)' }}>Logbook</h4>
           <p className="text-sm text-secondary">Isi jurnal pekerjaan dan unggah dokumentasi</p>
         </Link>
         <Link href="/dashboard/siswa/laporan" className="card card-hover card-glow" style={{ cursor: 'pointer', textDecoration: 'none' }}>

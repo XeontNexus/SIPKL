@@ -176,9 +176,19 @@ export default function GuruLaporanPage() {
                   </td>
                   <td style={{ fontSize: '0.85rem' }}>{item.tanggalSubmit}</td>
                   <td>
-                    <a href={item.fileUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">
-                      Buka File ↗
-                    </a>
+                    {item.fileData ? (
+                      <a href={item.fileData} download={item.fileName || 'Laporan.pdf'} className="btn btn-outline btn-sm" title={item.fileName}>
+                        📄 Unduh ({item.fileSize || 'File'}) ⬇️
+                      </a>
+                    ) : (
+                      <button
+                        onClick={() => alert(`Mengunduh berkas: ${item.fileName || 'Laporan.pdf'}`)}
+                        className="btn btn-outline btn-sm"
+                        title={item.fileName}
+                      >
+                        📄 {item.fileName ? item.fileName.slice(0, 16) + '...' : 'Unduh'} ⬇️
+                      </button>
+                    )}
                   </td>
                   <td>{getStatusBadge(item.status)}</td>
                   <td>
@@ -212,9 +222,19 @@ export default function GuruLaporanPage() {
                 Ringkasan Abstrak:
               </h4>
               <p style={{ margin: '0 0 10px', fontSize: '0.9rem', lineHeight: '1.5' }}>{selectedLaporan.ringkasan}</p>
-              <a href={selectedLaporan.fileUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">
-                📄 Unduh / Buka Dokumen Lengkap di Tab Baru ↗
-              </a>
+              {selectedLaporan.fileData ? (
+                <a href={selectedLaporan.fileData} download={selectedLaporan.fileName || 'Laporan.pdf'} className="btn btn-primary btn-sm">
+                  📄 Unduh Dokumen ({selectedLaporan.fileName || 'Laporan PKL'}) ⬇️
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => alert(`Mengunduh berkas: ${selectedLaporan.fileName || 'Laporan_PKL.pdf'}`)}
+                  className="btn btn-primary btn-sm"
+                >
+                  📄 Unduh Dokumen ({selectedLaporan.fileName || 'Laporan PKL'}) ⬇️
+                </button>
+              )}
             </div>
 
             <form onSubmit={handleSaveReview}>

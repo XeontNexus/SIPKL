@@ -370,7 +370,7 @@ export default function SiswaDaftarPKLPage() {
                 </h3>
                 <p style={{ margin: '3px 0 0', fontSize: '0.85rem', color: '#92400e', maxWidth: '640px' }}>
                   Permohonan pendaftaran magang Anda telah dikirim dan sedang dalam proses peninjauan oleh pihak mitra. 
-                  <strong> Akses Presensi Harian dan Logbook Mingguan akan otomatis terbuka segera setelah pembimbing mitra meng-ACC permohonan Anda.</strong>
+                  <strong> Akses Presensi Harian dan Logbook akan otomatis terbuka segera setelah pembimbing mitra meng-ACC permohonan Anda.</strong>
                 </p>
               </div>
             </div>
@@ -425,7 +425,7 @@ export default function SiswaDaftarPKLPage() {
                   {siswa.mitraNama}
                 </h3>
                 <p style={{ margin: '3px 0 0', fontSize: '0.85rem', color: '#166534' }}>
-                  Permohonan Anda telah disetujui (ACC) oleh industri ini. Sekarang Anda sudah memiliki akses penuh ke menu <strong>Presensi</strong> dan <strong>Logbook Mingguan</strong>.
+                  Permohonan Anda telah disetujui (ACC) oleh industri ini. Sekarang Anda sudah memiliki akses penuh ke menu <strong>Presensi</strong> dan <strong>Logbook</strong>.
                 </p>
               </div>
             </div>

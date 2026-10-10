@@ -182,7 +182,7 @@ export default function GuruLogbookPage() {
                     <div className="text-xs text-secondary">{lb.jurusan}</div>
                   </td>
                   <td><span className="badge badge-info">Minggu {lb.mingguKe}</span></td>
-                  <td style={{ fontSize: '0.85rem' }}>{lb.tanggalMulai} s/d {lb.tanggalSelesai}</td>
+                  <td style={{ fontSize: '0.85rem' }}>{lb.bulan ? `Bulan ${lb.bulan}` : `${lb.tanggalMulai} s/d ${lb.tanggalSelesai}`}</td>
                   <td style={{ maxWidth: '300px' }}>
                     <p style={{ margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                       {lb.kegiatan}
@@ -222,7 +222,7 @@ export default function GuruLogbookPage() {
               <div>
                 <h3 className="modal-title">Review Logbook Siswa</h3>
                 <p className="text-sm text-secondary" style={{ margin: 0 }}>
-                  {selectedLogbook.namaSiswa} (Minggu ke-{selectedLogbook.mingguKe})
+                  {selectedLogbook.namaSiswa} (Minggu ke-{selectedLogbook.mingguKe}{selectedLogbook.bulan ? ` • Bulan ${selectedLogbook.bulan}` : ''})
                 </p>
               </div>
               <button onClick={() => setShowReviewModal(false)} className="modal-close">&times;</button>

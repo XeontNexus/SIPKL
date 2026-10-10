@@ -31,12 +31,20 @@ export async function POST(request) {
       nisn,
       noHp,
       alamat,
+      guruPembimbing,
+      kelasJurusan,
+      tanggalMulaiMagang,
+      tanggalSelesaiMagang,
     } = body;
 
     const updated = updateSiswaBiodata(siswaId, {
       ...(nama && { nama }),
       ...(jurusan && { jurusan }),
       ...(kelas && { kelas }),
+      ...(kelasJurusan && { kelasJurusan, kelas: kelasJurusan.split(' - ')[0] || kelas }),
+      ...(guruPembimbing && { guruPembimbing }),
+      ...(tanggalMulaiMagang && { tanggalMulaiMagang }),
+      ...(tanggalSelesaiMagang && { tanggalSelesaiMagang }),
       ...(tanggalLahir && { tanggalLahir }),
       ...(nisn && { nisn }),
       ...(noHp !== undefined && { noHp }),

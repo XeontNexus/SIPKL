@@ -2,7 +2,22 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { IconAlert, IconCheck, IconBriefcase, IconUser } from '@/components/Icons';
+import { IconAlert } from '@/components/Icons';
+
+const DAFTAR_BULAN = [
+  'Januari',
+  'Februari',
+  'Maret',
+  'April',
+  'Mei',
+  'Juni',
+  'Juli',
+  'Agustus',
+  'September',
+  'Oktober',
+  'November',
+  'Desember',
+];
 
 export default function SiswaLogbookPage() {
   const [logbooks, setLogbooks] = useState([]);
@@ -18,8 +33,7 @@ export default function SiswaLogbookPage() {
 
   const [formData, setFormData] = useState({
     mingguKe: '',
-    tanggalMulai: '',
-    tanggalSelesai: '',
+    bulan: '',
     kegiatan: '',
     hasil: '',
     kendala: '',
@@ -79,11 +93,15 @@ export default function SiswaLogbookPage() {
       });
       if (res.ok) {
         setShowForm(false);
-        setFormData({ mingguKe: '', tanggalMulai: '', tanggalSelesai: '', kegiatan: '', hasil: '', kendala: '' });
+        setFormData({ mingguKe: '', bulan: '', kegiatan: '', hasil: '', kendala: '' });
         fetchLogbooks();
+      } else {
+        const errJson = await res.json();
+        setErrorMessage(errJson.error || 'Gagal menyimpan logbook');
       }
     } catch (error) {
       console.error('Error:', error);
+      setErrorMessage('Terjadi kesalahan saat menyimpan logbook');
     } finally {
       setFormLoading(false);
     }
@@ -103,9 +121,9 @@ export default function SiswaLogbookPage() {
     <div>
       <div className="page-header" style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
         <div>
-          <h1 className="page-title">Logbook Mingguan Siswa</h1>
+          <h1 className="page-title">Logbook Siswa</h1>
           <p className="page-subtitle">
-            Catat jurnal kegiatan pekerjaan mingguan selama masa PKL di industri mitra.
+            Catat jurnal kegiatan pekerjaan selama masa PKL di industri mitra.
           </p>
         </div>
         {prerequisite.isReady ? (
@@ -138,7 +156,7 @@ export default function SiswaLogbookPage() {
                 Perhatian: Pengisian Logbook Masih Terkunci
               </h3>
               <p style={{ margin: '0 0 14px', fontSize: '0.88rem', color: '#78350f', lineHeight: '1.5' }}>
-                Sebelum dapat membuat catatan jurnal dan logbook mingguan, Anda wajib menyelesaikan 2 syarat administrasi berikut:
+                Sebelum dapat membuat catatan jurnal dan logbook, Anda wajib menyelesaikan 2 syarat administrasi berikut:
               </p>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '12px' }}>
@@ -189,7 +207,6 @@ export default function SiswaLogbookPage() {
         </div>
       )}
 
-
       {errorMessage && (
         <div className="alert alert-danger" style={{ marginBottom: 'var(--space-md)' }}>
           {errorMessage}
@@ -199,42 +216,44 @@ export default function SiswaLogbookPage() {
       {/* Form */}
       {showForm && (
         <div className="card" style={{ marginBottom: 'var(--space-lg)' }}>
-          <h4 style={{ marginBottom: 'var(--space-md)' }}>📓 Form Logbook Mingguan</h4>
+          <h4 style={{ marginBottom: 'var(--space-md)' }}>📓 Form Logbook</h4>
           <form onSubmit={handleSubmit}>
             <div className="grid-2">
               <div className="form-group">
                 <label className="form-label">Minggu Ke-</label>
-                <input
-                  type="number"
+                <select
                   className="form-input"
-                  min="1"
                   value={formData.mingguKe}
                   onChange={(e) => setFormData({ ...formData, mingguKe: e.target.value })}
                   required
-                  placeholder="1"
-                />
+                >
+                  <option value="">-- Pilih Minggu Ke- --</option>
+                  <option value="1">Minggu ke-1</option>
+                  <option value="2">Minggu ke-2</option>
+                  <option value="3">Minggu ke-3</option>
+                  <option value="4">Minggu ke-4</option>
+                  <option value="5">Minggu ke-5</option>
+                </select>
               </div>
+
               <div className="form-group">
-                <label className="form-label">Tanggal Mulai</label>
-                <input
-                  type="date"
+                <label className="form-label">Bulan</label>
+                <select
                   className="form-input"
-                  value={formData.tanggalMulai}
-                  onChange={(e) => setFormData({ ...formData, tanggalMulai: e.target.value })}
+                  value={formData.bulan}
+                  onChange={(e) => setFormData({ ...formData, bulan: e.target.value })}
                   required
-                />
+                >
+                  <option value="">-- Pilih Bulan --</option>
+                  {DAFTAR_BULAN.map((bln) => (
+                    <option key={bln} value={bln}>
+                      {bln}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Tanggal Selesai</label>
-              <input
-                type="date"
-                className="form-input"
-                value={formData.tanggalSelesai}
-                onChange={(e) => setFormData({ ...formData, tanggalSelesai: e.target.value })}
-                required
-              />
-            </div>
+
             <div className="form-group">
               <label className="form-label">Kegiatan yang Dilakukan</label>
               <textarea
@@ -246,6 +265,7 @@ export default function SiswaLogbookPage() {
                 style={{ minHeight: '120px' }}
               />
             </div>
+
             <div className="grid-2">
               <div className="form-group">
                 <label className="form-label">Hasil (opsional)</label>
@@ -266,6 +286,7 @@ export default function SiswaLogbookPage() {
                 />
               </div>
             </div>
+
             <div className="flex gap-sm" style={{ justifyContent: 'flex-end' }}>
               <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>Batal</button>
               <button type="submit" className="btn btn-primary" disabled={formLoading}>
@@ -286,11 +307,16 @@ export default function SiswaLogbookPage() {
           {logbooks.map((lb) => (
             <div key={lb.id} className="card card-hover">
               <div className="flex justify-between items-center" style={{ marginBottom: '12px' }}>
-                <h4>📓 Minggu ke-{lb.mingguKe}</h4>
+                <h4>📓 Minggu ke-{lb.mingguKe} {lb.bulan ? `(${lb.bulan})` : ''}</h4>
                 {statusBadge(lb.status)}
               </div>
               <p className="text-sm text-secondary" style={{ marginBottom: '8px' }}>
-                📅 {new Date(lb.tanggalMulai).toLocaleDateString('id-ID')} — {new Date(lb.tanggalSelesai).toLocaleDateString('id-ID')}
+                📅 Bulan: <strong style={{ color: 'var(--text-primary)' }}>{lb.bulan || '-'}</strong> • Minggu ke-{lb.mingguKe}
+                {lb.tanggalMulai && lb.tanggalSelesai ? (
+                  <span style={{ marginLeft: '8px', opacity: 0.75 }}>
+                    ({new Date(lb.tanggalMulai).toLocaleDateString('id-ID')} — {new Date(lb.tanggalSelesai).toLocaleDateString('id-ID')})
+                  </span>
+                ) : null}
               </p>
               <p style={{ marginBottom: '8px' }}>{lb.kegiatan}</p>
               {lb.hasil && <p className="text-sm"><strong>Hasil:</strong> {lb.hasil}</p>}

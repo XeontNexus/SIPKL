@@ -65,7 +65,7 @@ const navConfig = {
       { label: 'Profile Saya', Icon: IconUser, href: '/dashboard/siswa/profile' },
       { label: 'Daftar Tempat PKL', Icon: IconBriefcase, href: '/dashboard/siswa/daftar-pkl' },
       { label: 'Presensi Siswa', Icon: IconPresensi, href: '/dashboard/siswa/presensi' },
-      { label: 'Logbook Mingguan', Icon: IconLogbook, href: '/dashboard/siswa/logbook' },
+      { label: 'Logbook', Icon: IconLogbook, href: '/dashboard/siswa/logbook' },
       { label: 'Laporan Akhir', Icon: IconLaporan, href: '/dashboard/siswa/laporan' },
       { label: 'Surat Izin', Icon: IconSuratIzin, href: '/dashboard/siswa/surat-izin' },
       { label: 'Transkrip Nilai', Icon: IconNilai, href: '/dashboard/siswa/nilai' },

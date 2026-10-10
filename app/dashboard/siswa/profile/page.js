@@ -25,6 +25,10 @@ export default function SiswaProfilePage() {
     nisn: '0051234567',
     kelas: 'XII TKJ 1',
     jurusan: 'Teknik Komputer dan Jaringan',
+    kelasJurusan: 'XII TKJ 1 - Teknik Komputer dan Jaringan',
+    guruPembimbing: 'Drs. H. Hendra Wijaya, M.Pd',
+    tanggalMulaiMagang: '2026-07-01',
+    tanggalSelesaiMagang: '2026-10-31',
     tanggalLahir: '2008-05-14',
     noHp: '081234567890',
     alamat: 'Jl. Raya Perhentian Raja No. 45, Kampar',
@@ -35,23 +39,24 @@ export default function SiswaProfilePage() {
     statusPKL: 'SEDANG_PKL',
   });
 
-  const daftarJurusan = [
-    'Teknik Komputer dan Jaringan',
-    'Rekayasa Perangkat Lunak',
-    'Desain Komunikasi Visual',
-    'Teknik Bisnis Sepeda Motor',
-    'Akuntansi dan Keuangan Lembaga',
-    'Manajemen Perkantoran',
+  const daftarGuru = [
+    'Drs. H. Hendra Wijaya, M.Pd',
+    'Dra. Hj. Nurhidayah, M.Kom',
+    'Budi Pratama, S.Pd., M.T.',
+    'Siti Fatimah, S.Kom.',
+    'Ahmad Solihin, S.T.',
+    'Rina Marlina, M.Pd.',
   ];
 
-  const daftarKelas = [
-    'XII TKJ 1',
-    'XII TKJ 2',
-    'XII RPL 1',
-    'XII DKV 1',
-    'XII TBSM 1',
-    'XII AKL 1',
-    'XII MP 1',
+  const daftarKelasJurusan = [
+    'XII TKJ 1 - Teknik Komputer dan Jaringan',
+    'XII TKJ 2 - Teknik Komputer dan Jaringan',
+    'XII RPL 1 - Rekayasa Perangkat Lunak',
+    'XII RPL 2 - Rekayasa Perangkat Lunak',
+    'XII DKV 1 - Desain Komunikasi Visual',
+    'XII TBSM 1 - Teknik Bisnis Sepeda Motor',
+    'XII AKL 1 - Akuntansi dan Keuangan Lembaga',
+    'XII MP 1 - Manajemen Perkantoran',
   ];
 
   useEffect(() => {
@@ -64,7 +69,18 @@ export default function SiswaProfilePage() {
       if (res.ok) {
         const json = await res.json();
         if (json.data) {
-          setProfile(json.data);
+          setProfile((prev) => ({
+            ...prev,
+            ...json.data,
+            kelasJurusan:
+              json.data.kelasJurusan ||
+              (json.data.kelas && json.data.jurusan
+                ? `${json.data.kelas} - ${json.data.jurusan}`
+                : prev.kelasJurusan),
+            guruPembimbing: json.data.guruPembimbing || prev.guruPembimbing,
+            tanggalMulaiMagang: json.data.tanggalMulaiMagang || prev.tanggalMulaiMagang,
+            tanggalSelesaiMagang: json.data.tanggalSelesaiMagang || prev.tanggalSelesaiMagang,
+          }));
         }
       }
     } catch (err) {
@@ -80,6 +96,19 @@ export default function SiswaProfilePage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     }
+  };
+
+  const handleKelasJurusanChange = (val) => {
+    const parts = val.split(' - ');
+    const kelasPart = parts[0] || val;
+    const jurusanPart = parts[1] || '';
+
+    setProfile({
+      ...profile,
+      kelasJurusan: val,
+      kelas: kelasPart,
+      ...(jurusanPart && { jurusan: jurusanPart }),
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -100,7 +129,20 @@ export default function SiswaProfilePage() {
         setError(json.error || 'Gagal menyimpan biodata');
       } else {
         setMessage('Biodata profil siswa berhasil diperbarui! Data tersimpan di sistem.');
-        if (json.data) setProfile(json.data);
+        if (json.data) {
+          setProfile((prev) => ({
+            ...prev,
+            ...json.data,
+            kelasJurusan:
+              json.data.kelasJurusan ||
+              (json.data.kelas && json.data.jurusan
+                ? `${json.data.kelas} - ${json.data.jurusan}`
+                : prev.kelasJurusan),
+            guruPembimbing: json.data.guruPembimbing || prev.guruPembimbing,
+            tanggalMulaiMagang: json.data.tanggalMulaiMagang || prev.tanggalMulaiMagang,
+            tanggalSelesaiMagang: json.data.tanggalSelesaiMagang || prev.tanggalSelesaiMagang,
+          }));
+        }
       }
     } catch (err) {
       setError('Terjadi kendala jaringan saat menyimpan biodata.');
@@ -115,7 +157,7 @@ export default function SiswaProfilePage() {
         <div>
           <h1 className="page-title">Profil & Biodata Siswa PKL</h1>
           <p className="page-subtitle">
-            Lengkapi data diri Anda. Biodata lengkap dan pendaftaran ke mitra wajib diisi sebelum mengisi Presensi & Logbook Mingguan.
+            Lengkapi data diri Anda. Biodata lengkap dan pendaftaran ke mitra wajib diisi sebelum mengisi Presensi & Logbook.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -140,7 +182,7 @@ export default function SiswaProfilePage() {
         </div>
       )}
 
-      {/* KARTU NOMOR ID UNIK SISWA (Dibuat sejak akun aktif untuk undangan mitra) */}
+      {/* KARTU NOMOR ID UNIK SISWA */}
       <div
         className="card card-glow"
         style={{
@@ -198,55 +240,40 @@ export default function SiswaProfilePage() {
                   style={{
                     background: copied ? '#10b981' : '#3b82f6',
                     color: '#ffffff',
-                    border: 'none',
-                    fontWeight: 600,
-                    padding: '8px 14px',
-                    borderRadius: '8px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    fontWeight: 700,
                   }}
                 >
-                  {copied ? '✓ Berhasil Disalin!' : '📋 Salin Nomor ID'}
+                  {copied ? '✓ Berhasil Disalin!' : '📋 Salin ID'}
                 </button>
               </div>
-              <p style={{ margin: '8px 0 0', fontSize: '0.82rem', color: '#cbd5e1', maxWidth: '640px', lineHeight: '1.5' }}>
-                Nomor ID ini otomatis aktif sejak pembuatan akun. Bagikan nomor ID unik ini kepada pembimbing <strong>Mitra Industri</strong> agar mitra dapat langsung mengundang Anda bergabung ke perusahaan mereka tanpa perlu mencari manual.
-              </p>
             </div>
           </div>
-
-          {/* Status Badges */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-start' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Status Biodata:</span>
-              {profile.biodataLengkap ? (
-                <span className="badge badge-success" style={{ fontSize: '0.75rem' }}>✓ Biodata Lengkap</span>
-              ) : (
-                <span className="badge badge-warning" style={{ fontSize: '0.75rem' }}>⚠️ Perlu Dilengkapi</span>
-              )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ fontSize: '0.78rem', color: '#94a3b8' }}>Mitra Industri:</span>
-              {profile.mitraId ? (
-                <span className="badge badge-info" style={{ fontSize: '0.75rem' }}>🏢 {profile.mitraNama}</span>
-              ) : (
-                <span className="badge badge-danger" style={{ fontSize: '0.75rem' }}>✕ Belum Gabung Mitra</span>
-              )}
-            </div>
+          <div style={{ textAlign: 'right', maxWidth: '320px' }}>
+            <span className="badge badge-success" style={{ background: '#059669', color: '#fff', fontSize: '0.75rem', padding: '6px 12px' }}>
+              ✓ Akun Terverifikasi
+            </span>
+            <p style={{ margin: '6px 0 0', fontSize: '0.8rem', color: '#94a3b8' }}>
+              Berikan ID ini kepada HRD mitra jika Anda menerima jalur undangan langsung.
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Syarat Alur Peringatan Jika Belum Lengkap */}
-      {(!profile.biodataLengkap || !profile.mitraId) && (
+      {/* Banner Perhatian Alur Pendaftaran PKL */}
+      {(!profile.biodataLengkap || profile.statusPKL === 'BELUM_GABUNG' || profile.statusPKL === 'MENUNGGU_ACC') && (
         <div className="card" style={{ marginBottom: 'var(--space-xl)', background: '#fffbeb', border: '1.5px solid #fde68a' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
             <IconAlert size={24} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
             <div>
               <strong style={{ color: '#b45309', fontSize: '1rem' }}>Perhatian Alur Pendaftaran PKL:</strong>
               <p style={{ margin: '4px 0 8px', fontSize: '0.88rem', color: '#92400e', lineHeight: '1.5' }}>
-                Sebelum Anda dapat melakukan presensi harian atau mengisi logbook mingguan, sistem mewajibkan:
+                Sebelum Anda dapat melakukan presensi harian atau mengisi logbook, sistem mewajibkan:
               </p>
               <ol style={{ paddingLeft: '18px', margin: 0, fontSize: '0.85rem', color: '#92400e', lineHeight: '1.6' }}>
-                <li><strong>Mengisi Biodata Lengkap:</strong> Nama, Kelas, Jurusan, dan Tanggal Lahir pada formulir di bawah.</li>
+                <li><strong>Mengisi Biodata Lengkap:</strong> Nama, Kelas Jurusan, Guru Pembimbing, Periode Magang, dan Tanggal Lahir pada formulir di bawah.</li>
                 <li><strong>Bergabung ke Mitra Industri:</strong> Pilih mitra di menu <Link href="/dashboard/siswa/daftar-pkl" style={{ color: '#b45309', fontWeight: 700, textDecoration: 'underline' }}>Daftar Tempat PKL</Link> atau minta mitra mengundang Anda menggunakan Nomor ID Unik di atas.</li>
               </ol>
             </div>
@@ -307,35 +334,64 @@ export default function SiswaProfilePage() {
               </div>
             </div>
 
+            {/* GURU PEMBIMBING */}
+            <div className="form-group" style={{ marginBottom: '16px' }}>
+              <label className="form-label">Guru Pembimbing *</label>
+              <select
+                required
+                className="form-control"
+                value={profile.guruPembimbing || ''}
+                onChange={(e) => setProfile({ ...profile, guruPembimbing: e.target.value })}
+              >
+                <option value="">Pilih Guru Pembimbing...</option>
+                {daftarGuru.map((g) => (
+                  <option key={g} value={g}>
+                    {g}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* KELAS JURUSAN (GANTI DARI ROMBEL / KELAS) */}
+            <div className="form-group" style={{ marginBottom: '16px' }}>
+              <label className="form-label">Kelas Jurusan *</label>
+              <select
+                required
+                className="form-control"
+                value={profile.kelasJurusan || ''}
+                onChange={(e) => handleKelasJurusanChange(e.target.value)}
+              >
+                <option value="">Pilih Kelas Jurusan...</option>
+                {daftarKelasJurusan.map((kj) => (
+                  <option key={kj} value={kj}>
+                    {kj}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* PERIODE MAGANG: MULAI HINGGA SELESAI */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
               <div className="form-group">
-                <label className="form-label">Kompetensi Keahlian (Jurusan) *</label>
-                <select
+                <label className="form-label">Mulai Magang *</label>
+                <input
+                  type="date"
                   required
                   className="form-control"
-                  value={profile.jurusan}
-                  onChange={(e) => setProfile({ ...profile, jurusan: e.target.value })}
-                >
-                  <option value="">Pilih Jurusan...</option>
-                  {daftarJurusan.map((j) => (
-                    <option key={j} value={j}>{j}</option>
-                  ))}
-                </select>
+                  value={profile.tanggalMulaiMagang || ''}
+                  onChange={(e) => setProfile({ ...profile, tanggalMulaiMagang: e.target.value })}
+                />
               </div>
 
               <div className="form-group">
-                <label className="form-label">Rombel / Kelas Aktif *</label>
-                <select
+                <label className="form-label">Selesai Magang *</label>
+                <input
+                  type="date"
                   required
                   className="form-control"
-                  value={profile.kelas}
-                  onChange={(e) => setProfile({ ...profile, kelas: e.target.value })}
-                >
-                  <option value="">Pilih Kelas...</option>
-                  {daftarKelas.map((k) => (
-                    <option key={k} value={k}>{k}</option>
-                  ))}
-                </select>
+                  value={profile.tanggalSelesaiMagang || ''}
+                  onChange={(e) => setProfile({ ...profile, tanggalSelesaiMagang: e.target.value })}
+                />
               </div>
             </div>
 
@@ -373,8 +429,46 @@ export default function SiswaProfilePage() {
           </form>
         </div>
 
-        {/* Informasi Status Kemitraan PKL Siswa */}
+        {/* Informasi Status Kemitraan & Ringkasan Data PKL Siswa */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+          {/* Ringkasan Akademik Siswa */}
+          <div className="card" style={{ background: '#ffffff' }}>
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <IconUser size={20} color="var(--primary)" />
+              <span>Ringkasan Data Akademik PKL</span>
+            </h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ padding: '10px 12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '8px', border: '1px solid var(--border-primary, #e2e8f0)' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Kelas Jurusan
+                </div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: '2px' }}>
+                  {profile.kelasJurusan || `${profile.kelas} - ${profile.jurusan}`}
+                </div>
+              </div>
+
+              <div style={{ padding: '10px 12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '8px', border: '1px solid var(--border-primary, #e2e8f0)' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Guru Pembimbing
+                </div>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--primary)', marginTop: '2px' }}>
+                  👨‍🏫 {profile.guruPembimbing || 'Belum Ditentukan'}
+                </div>
+              </div>
+
+              <div style={{ padding: '10px 12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '8px', border: '1px solid var(--border-primary, #e2e8f0)' }}>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Periode Pelaksanaan Magang
+                </div>
+                <div style={{ fontSize: '0.92rem', fontWeight: 700, color: '#166534', marginTop: '2px' }}>
+                  📅 {profile.tanggalMulaiMagang ? new Date(profile.tanggalMulaiMagang).toLocaleDateString('id-ID') : '-'} s/d{' '}
+                  {profile.tanggalSelesaiMagang ? new Date(profile.tanggalSelesaiMagang).toLocaleDateString('id-ID') : '-'}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="card" style={{ background: '#ffffff' }}>
             <h3 style={{ fontSize: '1.15rem', fontWeight: 700, marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <IconBriefcase size={20} color="var(--primary)" />
