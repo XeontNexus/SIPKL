@@ -15,9 +15,11 @@ import {
   IconBriefcase,
   IconCheckCheck,
 } from '@/components/Icons';
+import { useModalAlert } from '@/components/ModalAlert';
 
 export default function MitraDashboard() {
   const { data: session } = useSession();
+  const { showAlert, showConfirm, showPrompt } = useModalAlert();
   const [stats, setStats] = useState({
     totalSiswa: 4,
     hadirHariIni: 3,
@@ -54,7 +56,14 @@ export default function MitraDashboard() {
   };
 
   const handleAccPendaftar = async (pendaftaranId, namaSiswa) => {
-    if (!confirm(`Setujui (ACC) permohonan PKL ${namaSiswa}? Siswa akan resmi terdaftar dan langsung mendapatkan akses presensi serta logbook.`)) return;
+    const confirmed = await showConfirm({
+      title: 'Persetujuan (ACC) PKL Mitra',
+      message: `Setujui (ACC) permohonan PKL ${namaSiswa}?\n\nSetelah Anda meng-ACC, siswa akan diminta mengonfirmasi kesediaan magang sebelum resmi aktif.`,
+      type: 'info',
+      confirmText: 'Ya, ACC Siswa Ini',
+      cancelText: 'Batal',
+    });
+    if (!confirmed) return;
 
     setActionLoading(pendaftaranId);
     setActionFeedback('');
@@ -69,21 +78,28 @@ export default function MitraDashboard() {
 
       const json = await res.json();
       if (!res.ok) {
-        setActionError(json.error || 'Gagal meng-ACC siswa.');
+        await showAlert({ title: 'Gagal ACC', message: json.error || 'Gagal meng-ACC siswa.', type: 'error' });
       } else {
-        setActionFeedback(json.message || `Siswa ${namaSiswa} berhasil di-ACC!`);
+        await showAlert({ title: 'Berhasil ACC', message: `Siswa ${namaSiswa} berhasil di-ACC! Menunggu konfirmasi kesediaan dari siswa.`, type: 'success' });
         fetchPendaftar();
         fetchData();
       }
     } catch (err) {
-      setActionError('Kendala jaringan saat memproses ACC.');
+      await showAlert({ title: 'Kendala Jaringan', message: 'Kendala jaringan saat memproses ACC.', type: 'error' });
     } finally {
       setActionLoading(null);
     }
   };
 
   const handleTolakPendaftar = async (pendaftaranId, namaSiswa) => {
-    const alasan = prompt(`Tolak permohonan PKL ${namaSiswa}? Masukkan alasan penolakan:`, 'Kuota magang telah penuh.');
+    const alasan = await showPrompt({
+      title: 'Tolak Permohonan PKL',
+      message: `Masukkan alasan penolakan permohonan PKL ${namaSiswa}:`,
+      defaultValue: 'Kuota magang telah penuh.',
+      placeholder: 'Alasan penolakan...',
+      confirmText: 'Tolak Permohonan',
+      cancelText: 'Batal',
+    });
     if (alasan === null) return;
 
     setActionLoading(pendaftaranId);
@@ -99,16 +115,46 @@ export default function MitraDashboard() {
 
       const json = await res.json();
       if (!res.ok) {
-        setActionError(json.error || 'Gagal menolak permohonan.');
+        await showAlert({ title: 'Gagal Menolak', message: json.error || 'Gagal menolak permohonan.', type: 'error' });
       } else {
-        setActionFeedback(`Permohonan ${namaSiswa} telah ditolak.`);
+        await showAlert({ title: 'Permohonan Ditolak', message: `Permohonan ${namaSiswa} telah ditolak.`, type: 'info' });
         fetchPendaftar();
         fetchData();
       }
     } catch (err) {
-      setActionError('Kendala jaringan saat menolak permohonan.');
+      await showAlert({ title: 'Kendala Jaringan', message: 'Kendala jaringan saat menolak permohonan.', type: 'error' });
     } finally {
       setActionLoading(null);
+    }
+  };
+
+  const handlePutusPenempatan = async (siswaId, namaSiswa) => {
+    const alasan = await showPrompt({
+      title: 'Putus / Batalkan Penempatan PKL',
+      message: `Apakah Anda yakin ingin memutus/membatalkan penempatan magang siswa ${namaSiswa}?\nMasukkan alasan pembatalan:`,
+      defaultValue: 'Pembatalan penempatan oleh pihak mitra industri.',
+      placeholder: 'Alasan pembatalan...',
+      confirmText: 'Putus Penempatan',
+      cancelText: 'Batal',
+    });
+    if (alasan === null) return;
+
+    try {
+      const res = await fetch('/api/mitra/pendaftar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'PUTUS', siswaId, catatanMitra: alasan }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        await showAlert({ title: 'Penempatan Diputus', message: `Penempatan siswa ${namaSiswa} berhasil diputus. Siswa dapat mendaftar kembali ke mitra lain.`, type: 'info' });
+        fetchPendaftar();
+        fetchData();
+      } else {
+        await showAlert({ title: 'Gagal', message: json.error || 'Gagal memutus penempatan.', type: 'error' });
+      }
+    } catch (e) {
+      await showAlert({ title: 'Kendala Jaringan', message: 'Kendala jaringan saat memutus penempatan.', type: 'error' });
     }
   };
 
@@ -413,10 +459,18 @@ export default function MitraDashboard() {
                     </td>
                     <td>{p.tanggalDaftar}</td>
                     <td>
-                      {p.status === 'DISETUJUI' ? (
-                        <span className="badge badge-success">✓ Telah Di-ACC</span>
+                      {p.status === 'DITERIMA_AKTIF' || p.status === 'DISETUJUI' ? (
+                        <span className="badge badge-success">✓ Resmi Sedang PKL</span>
+                      ) : p.status === 'DISETUJUI_MITRA' ? (
+                        <span className="badge badge-info" style={{ background: '#3b82f6', color: '#fff' }}>
+                          ⏳ Di-ACC Mitra (Menunggu Siswa)
+                        </span>
                       ) : p.status === 'DITOLAK' ? (
                         <span className="badge badge-danger">✕ Ditolak</span>
+                      ) : p.status === 'DIPUTUS_GURU_MITRA' ? (
+                        <span className="badge badge-danger" style={{ background: '#991b1b', color: '#fff' }}>
+                          ✕ Penempatan Diputus
+                        </span>
                       ) : (
                         <span className="badge badge-warning" style={{ background: '#f59e0b', color: '#000' }}>
                           ⏳ Menunggu ACC
@@ -445,9 +499,22 @@ export default function MitraDashboard() {
                             Tolak
                           </button>
                         </div>
+                      ) : p.status === 'DITERIMA_AKTIF' || p.status === 'DISETUJUI' ? (
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <span className="text-xs text-success" style={{ fontWeight: 600 }}>Aktif PKL</span>
+                          <button
+                            type="button"
+                            onClick={() => handlePutusPenempatan(p.siswaId, p.namaSiswa)}
+                            className="btn btn-sm btn-outline"
+                            style={{ padding: '4px 8px', fontSize: '0.75rem', color: '#dc2626', borderColor: '#fca5a5' }}
+                            title="Batalkan / putus penempatan siswa ini"
+                          >
+                            Putus PKL
+                          </button>
+                        </div>
                       ) : (
                         <span className="text-xs text-secondary">
-                          {p.status === 'DISETUJUI' ? 'Akses Presensi Aktif' : p.catatanMitra || 'Selesai'}
+                          {p.status === 'DISETUJUI_MITRA' ? 'Menunggu Konfirmasi Siswa' : p.catatanMitra || 'Selesai'}
                         </span>
                       )}
                     </td>

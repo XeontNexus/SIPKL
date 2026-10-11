@@ -2,16 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useModalAlert } from '@/components/ModalAlert';
 
 export default function SiswaSuratIzinPage() {
   const { data: session } = useSession();
+  const { showAlert } = useModalAlert();
+
   const [suratList, setSuratList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState({ text: '', type: '' });
   const [formData, setFormData] = useState({
-    jenisSurat: 'IZIN_TIDAK_MASUK',
+    jenisSurat: 'IZIN_MAGANG',
     tanggalMulai: '',
     tanggalSelesai: '',
     alasan: '',
@@ -39,20 +41,26 @@ export default function SiswaSuratIzinPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-    setMessage({ text: '', type: '' });
 
     try {
       const res = await fetch('/api/siswa/surat-izin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          jenisSurat: 'IZIN_MAGANG',
+        }),
       });
 
       if (res.ok) {
         setShowModal(false);
-        setMessage({ text: 'Permohonan surat izin berhasil diajukan ke Admin!', type: 'success' });
+        await showAlert({
+          title: 'Pengajuan Terkirim',
+          message: 'Permohonan surat pengantar tugas PKL berhasil diajukan ke Bagian Administrasi / Tata Usaha!',
+          type: 'success',
+        });
         setFormData({
-          jenisSurat: 'IZIN_TIDAK_MASUK',
+          jenisSurat: 'IZIN_MAGANG',
           tanggalMulai: '',
           tanggalSelesai: '',
           alasan: '',
@@ -61,10 +69,18 @@ export default function SiswaSuratIzinPage() {
         fetchSurat();
       } else {
         const err = await res.json();
-        setMessage({ text: err.error || 'Gagal mengajukan izin', type: 'danger' });
+        await showAlert({
+          title: 'Gagal Mengajukan',
+          message: err.error || 'Gagal mengajukan permohonan surat pengantar.',
+          type: 'error',
+        });
       }
     } catch (err) {
-      setMessage({ text: 'Terjadi kesalahan sistem', type: 'danger' });
+      await showAlert({
+        title: 'Kesalahan Sistem',
+        message: 'Terjadi kesalahan sistem saat mengirim permohonan.',
+        type: 'error',
+      });
     } finally {
       setSubmitting(false);
     }
@@ -83,24 +99,18 @@ export default function SiswaSuratIzinPage() {
 
   return (
     <div>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 className="page-title">Pengajuan Surat & Izin</h1>
-          <p className="page-subtitle">Ajukan surat izin magang atau permohonan dispensasi / tidak masuk PKL</p>
+          <h1 className="page-title">Surat Pengantar & Izin Magang PKL</h1>
+          <p className="page-subtitle">Ajukan permohonan surat tugas / pengantar resmi sekolah ke industri mitra PKL</p>
         </div>
         <button onClick={() => setShowModal(true)} className="btn btn-primary" id="btn-ajukan-izin">
-          ➕ Buat Pengajuan Baru
+          ➕ Ajukan Surat Pengantar Magang
         </button>
       </div>
 
-      {message.text && (
-        <div className={`alert alert-${message.type}`} style={{ marginBottom: 'var(--space-md)' }}>
-          {message.text}
-        </div>
-      )}
-
       <div className="card">
-        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '16px' }}>Riwayat Pengajuan Surat Izin</h3>
+        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, marginBottom: '16px' }}>Riwayat Surat Pengantar Magang PKL</h3>
         {loading ? (
           <div className="text-center" style={{ padding: '30px' }}>
             <div className="spinner" style={{ margin: '0 auto 12px' }}></div>
@@ -109,8 +119,8 @@ export default function SiswaSuratIzinPage() {
         ) : suratList.length === 0 ? (
           <div className="empty-state" style={{ padding: '36px', textAlign: 'center' }}>
             <div style={{ fontSize: '3rem', marginBottom: '12px' }}>✉️</div>
-            <h4>Belum Ada Pengajuan</h4>
-            <p className="text-secondary">Kamu belum pernah mengajukan surat izin PKL maupun permohonan absen.</p>
+            <h4>Belum Ada Pengajuan Surat</h4>
+            <p className="text-secondary">Kamu belum pernah mengajukan surat pengantar resmi magang PKL ke industri.</p>
           </div>
         ) : (
           <div className="table-responsive">
@@ -120,8 +130,8 @@ export default function SiswaSuratIzinPage() {
                   <th>No</th>
                   <th>Jenis Pengajuan</th>
                   <th>Periode / Tanggal</th>
-                  <th>Alasan</th>
-                  <th>Lampiran Bukti</th>
+                  <th>Tujuan Mitra & Alasan</th>
+                  <th>Lampiran Berkas</th>
                   <th>Status</th>
                   <th>Catatan Admin</th>
                 </tr>
@@ -131,14 +141,14 @@ export default function SiswaSuratIzinPage() {
                   <tr key={item.id || idx}>
                     <td>{idx + 1}</td>
                     <td>
-                      <strong>
-                        {item.jenisSurat === 'IZIN_MAGANG' ? '📄 Surat Pengantar Magang' : '🏥 Izin Sakit / Tidak Masuk'}
+                      <strong style={{ color: 'var(--primary)' }}>
+                        📄 Surat Pengantar Magang PKL
                       </strong>
                     </td>
                     <td>
                       {item.tanggalMulai} {item.tanggalSelesai ? `s/d ${item.tanggalSelesai}` : ''}
                     </td>
-                    <td style={{ maxWidth: '240px' }}>{item.alasan}</td>
+                    <td style={{ maxWidth: '260px' }}>{item.alasan}</td>
                     <td>
                       {item.lampiranUrl ? (
                         <a href={item.lampiranUrl} target="_blank" rel="noopener noreferrer" className="btn btn-outline btn-sm">
@@ -163,21 +173,15 @@ export default function SiswaSuratIzinPage() {
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '550px' }}>
             <div className="modal-header">
-              <h3 className="modal-title">Formulir Pengajuan Izin / Surat</h3>
+              <h3 className="modal-title">Formulir Surat Pengantar Magang PKL</h3>
               <button onClick={() => setShowModal(false)} className="modal-close">&times;</button>
             </div>
             <form onSubmit={handleSubmit}>
               <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label className="form-label">Jenis Surat *</label>
-                <select
-                  className="form-control"
-                  value={formData.jenisSurat}
-                  onChange={(e) => setFormData({ ...formData, jenisSurat: e.target.value })}
-                  required
-                >
-                  <option value="IZIN_TIDAK_MASUK">Izin Sakit / Keperluan Mendesak (Absen PKL)</option>
-                  <option value="IZIN_MAGANG">Permohonan Surat Tugas / Pengantar Magang Mitra</option>
-                </select>
+                <label className="form-label">Jenis Dokumen</label>
+                <div style={{ padding: '10px 14px', background: '#f1f5f9', borderRadius: '8px', fontWeight: 600, color: '#334155' }}>
+                  📄 Permohonan Surat Tugas / Pengantar Magang Mitra
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
@@ -204,11 +208,11 @@ export default function SiswaSuratIzinPage() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '16px' }}>
-                <label className="form-label">Keterangan / Alasan *</label>
+                <label className="form-label">Nama Mitra Industri & Keperluan Surat *</label>
                 <textarea
                   rows="3"
                   required
-                  placeholder="Jelaskan secara rinci alasan izin atau permohonan surat..."
+                  placeholder="Contoh: Permohonan surat pengantar tugas resmi dari SMKN 1 ke PT Telkom Riau untuk keperluan administrasi pendaftaran PKL."
                   className="form-control"
                   value={formData.alasan}
                   onChange={(e) => setFormData({ ...formData, alasan: e.target.value })}
@@ -216,10 +220,10 @@ export default function SiswaSuratIzinPage() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '20px' }}>
-                <label className="form-label">Link Bukti / Surat Dokter (Opsional)</label>
+                <label className="form-label">Link Berkas / Proposal Magang (Opsional)</label>
                 <input
                   type="url"
-                  placeholder="https://drive.google.com/... atau foto bukti"
+                  placeholder="https://drive.google.com/... atau link proposal"
                   className="form-control"
                   value={formData.lampiranUrl}
                   onChange={(e) => setFormData({ ...formData, lampiranUrl: e.target.value })}
@@ -231,7 +235,7 @@ export default function SiswaSuratIzinPage() {
                   Batal
                 </button>
                 <button type="submit" disabled={submitting} className="btn btn-primary">
-                  {submitting ? 'Mengirim...' : 'Ajukan Permohonan'}
+                  {submitting ? 'Mengirim...' : 'Ajukan Surat Pengantar'}
                 </button>
               </div>
             </form>

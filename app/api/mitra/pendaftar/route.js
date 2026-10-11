@@ -3,6 +3,7 @@ import {
   getPendaftarByMitra,
   accPendaftaranMitra,
   tolakPendaftaranMitra,
+  putusPenempatanPKL,
 } from '@/lib/siswaStore';
 
 export async function GET(request) {
@@ -17,7 +18,8 @@ export async function GET(request) {
       data: pendaftarList,
       total: pendaftarList.length,
       menungguACC: pendaftarList.filter((p) => p.status === 'MENUNGGU_ACC').length,
-      disetujui: pendaftarList.filter((p) => p.status === 'DISETUJUI').length,
+      menungguKonfirmasiSiswa: pendaftarList.filter((p) => p.status === 'DISETUJUI_MITRA').length,
+      disetujui: pendaftarList.filter((p) => p.status === 'DITERIMA_AKTIF' || p.status === 'DISETUJUI').length,
       ditolak: pendaftarList.filter((p) => p.status === 'DITOLAK').length,
     });
   } catch (error) {
@@ -28,26 +30,38 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { action, pendaftaranId, catatanMitra } = body;
-
-    if (!pendaftaranId) {
-      return NextResponse.json({ success: false, error: 'ID Pendaftaran wajib disertakan.' }, { status: 400 });
-    }
+    const { action, pendaftaranId, siswaId, catatanMitra } = body;
 
     if (action === 'ACC' || action === 'APPROVE') {
+      if (!pendaftaranId) {
+        return NextResponse.json({ success: false, error: 'ID Pendaftaran wajib disertakan.' }, { status: 400 });
+      }
       const result = accPendaftaranMitra(pendaftaranId, catatanMitra || 'Disetujui oleh pembimbing mitra.');
       return NextResponse.json({
         success: true,
-        message: `Siswa ${result.siswa.nama} berhasil DI-ACC! Akses presensi siswa tersebut kini telah aktif.`,
+        message: `Permohonan siswa ${result.siswa.nama} berhasil DI-ACC! Menunggu konfirmasi kesediaan dari siswa agar resmi aktif.`,
         data: result,
       });
     }
 
     if (action === 'TOLAK' || action === 'REJECT') {
+      if (!pendaftaranId) {
+        return NextResponse.json({ success: false, error: 'ID Pendaftaran wajib disertakan.' }, { status: 400 });
+      }
       const result = tolakPendaftaranMitra(pendaftaranId, catatanMitra || 'Kuota magang telah penuh.');
       return NextResponse.json({
         success: true,
-        message: `Permohonan pendaftaran ${result.siswa.nama} telah ditolak.`,
+        message: `Permohonan pendaftaran telah ditolak.`,
+        data: result,
+      });
+    }
+
+    if (action === 'PUTUS' || action === 'CANCEL_PLACEMENT') {
+      const targetSiswaId = siswaId || 'siswa-1';
+      const result = putusPenempatanPKL(targetSiswaId, 'MITRA_INDUSTRI', catatanMitra || 'Dibatalkan oleh pihak mitra');
+      return NextResponse.json({
+        success: true,
+        message: 'Penempatan siswa di mitra berhasil diputus/dibatalkan.',
         data: result,
       });
     }

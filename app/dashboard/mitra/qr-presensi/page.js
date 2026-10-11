@@ -5,9 +5,11 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import QRCode from 'qrcode';
 import { IconQRCode, IconClock, IconCheck, IconEye } from '@/components/Icons';
+import { useModalAlert } from '@/components/ModalAlert';
 
 export default function MitraQRPresensiPage() {
   const { data: session } = useSession();
+  const { showAlert } = useModalAlert();
   const [qrDataUrl, setQrDataUrl] = useState('');
   const [qrToken, setQrToken] = useState('');
   const [tipePresensi, setTipePresensi] = useState('MASUK');
@@ -56,7 +58,11 @@ export default function MitraQRPresensiPage() {
   const toggleFullScreen = () => {
     if (!document.fullscreenElement) {
       containerRef.current?.requestFullscreen().catch(err => {
-        alert(`Error fullscreen: ${err.message}`);
+        showAlert({
+          title: 'Mode Layar Penuh',
+          message: `Tidak dapat mengaktifkan layar penuh: ${err.message}`,
+          type: 'warning',
+        });
       });
       setIsFullScreen(true);
     } else {

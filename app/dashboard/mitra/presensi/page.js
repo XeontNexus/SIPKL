@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { IconMapPin, IconExternalLink } from '@/components/Icons';
+import { useModalAlert } from '@/components/ModalAlert';
 
 export default function MitraDataPresensiPage() {
   const { data: session } = useSession();
+  const { showAlert } = useModalAlert();
   const [presensiList, setPresensiList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterTanggal, setFilterTanggal] = useState(new Date().toISOString().split('T')[0]);
@@ -55,7 +57,11 @@ export default function MitraDataPresensiPage() {
       setShowModal(false);
       fetchPresensi();
     } catch (err) {
-      alert('Gagal simpan presensi manual');
+      showAlert({
+        title: 'Gagal Simpan',
+        message: 'Gagal menyimpan data presensi manual.',
+        type: 'error',
+      });
     }
   };
 

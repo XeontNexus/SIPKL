@@ -27,6 +27,7 @@ import {
   IconBriefcase,
 } from '@/components/Icons';
 import NotificationDropdown from '@/components/NotificationDropdown';
+import { ModalAlertProvider } from '@/components/ModalAlert';
 
 
 // Navigation items per role using Line Icons
@@ -269,7 +270,9 @@ function DashboardShell({ children }) {
 export default function DashboardLayout({ children }) {
   return (
     <SessionProvider>
-      <DashboardShell>{children}</DashboardShell>
+      <ModalAlertProvider>
+        <DashboardShell>{children}</DashboardShell>
+      </ModalAlertProvider>
     </SessionProvider>
   );
 }

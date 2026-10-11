@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
+import { getSiswaProfile, putusPenempatanPKL } from '@/lib/siswaStore';
 
 let mockSiswaBimbingan = [
   {
-    id: '1',
+    id: 'siswa-1',
     nisn: '0051234567',
     kelas: 'XII TKJ 1',
     jurusan: 'Teknik Komputer dan Jaringan',
@@ -46,5 +47,40 @@ let mockSiswaBimbingan = [
 ];
 
 export async function GET() {
-  return NextResponse.json(mockSiswaBimbingan);
+  // Sync Ahmad Fauzi (siswa-1) with live store
+  const liveSiswa = getSiswaProfile('siswa-1');
+  const list = mockSiswaBimbingan.map((s) => {
+    if (s.id === 'siswa-1' || s.nisn === liveSiswa.nisn) {
+      return {
+        ...s,
+        statusPKL: liveSiswa.statusPKL,
+        mitra: {
+          namaPerusahaan: liveSiswa.mitraNama || '-',
+        },
+      };
+    }
+    return s;
+  });
+
+  return NextResponse.json(list);
+}
+
+export async function POST(request) {
+  try {
+    const body = await request.json();
+    const { action, siswaId = 'siswa-1', alasan = 'Keputusan guru pembimbing' } = body;
+
+    if (action === 'PUTUS_PKL') {
+      const result = putusPenempatanPKL(siswaId, 'GURU_PEMBIMBING', alasan);
+      return NextResponse.json({
+        success: true,
+        message: 'Penempatan PKL siswa berhasil diputus/dibatalkan. Siswa dapat mendaftar kembali.',
+        data: result,
+      });
+    }
+
+    return NextResponse.json({ success: false, error: 'Aksi tidak valid.' }, { status: 400 });
+  } catch (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
 }

@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { IconAlert, IconCheck, IconDocument, IconUpload } from '@/components/Icons';
+import { useModalAlert } from '@/components/ModalAlert';
 
 export default function SiswaLaporanPage() {
   const { data: session } = useSession();
+  const { showAlert } = useModalAlert();
   const [laporan, setLaporan] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -53,7 +55,11 @@ export default function SiswaLaporanPage() {
     if (!file) return;
 
     if (file.size > 15 * 1024 * 1024) {
-      alert('Ukuran file maksimal 15 MB');
+      showAlert({
+        title: 'Ukuran Berkas Terlalu Besar',
+        message: 'Ukuran file maksimal yang diperbolehkan adalah 15 MB.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -78,7 +84,11 @@ export default function SiswaLaporanPage() {
     e.preventDefault();
 
     if (!formData.fileName && !selectedFile) {
-      alert('Silakan pilih berkas dokumen laporan (PDF/Word) terlebih dahulu.');
+      showAlert({
+        title: 'Berkas Belum Dipilih',
+        message: 'Silakan pilih berkas dokumen laporan (PDF/Word) terlebih dahulu.',
+        type: 'warning',
+      });
       return;
     }
 
@@ -254,7 +264,7 @@ export default function SiswaLaporanPage() {
                   </a>
                 ) : (
                   <button
-                    onClick={() => alert(`Mengunduh berkas: ${laporan.fileName || 'Laporan_PKL.pdf'}`)}
+                    onClick={() => showAlert({ title: 'Unduh Berkas', message: `Sedang mengunduh berkas laporan: ${laporan.fileName || 'Laporan_PKL.pdf'}`, type: 'info' })}
                     className="btn btn-primary btn-sm"
                     style={{ flexShrink: 0 }}
                   >

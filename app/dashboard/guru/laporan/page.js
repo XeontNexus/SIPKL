@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { useModalAlert } from '@/components/ModalAlert';
 
 export default function GuruLaporanPage() {
   const { data: session } = useSession();
+  const { showAlert } = useModalAlert();
   const [laporanList, setLaporanList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedLaporan, setSelectedLaporan] = useState(null);
@@ -182,7 +184,7 @@ export default function GuruLaporanPage() {
                       </a>
                     ) : (
                       <button
-                        onClick={() => alert(`Mengunduh berkas: ${item.fileName || 'Laporan.pdf'}`)}
+                        onClick={() => showAlert({ title: 'Unduh Berkas', message: `Sedang mengunduh berkas laporan: ${item.fileName || 'Laporan.pdf'}`, type: 'info' })}
                         className="btn btn-outline btn-sm"
                         title={item.fileName}
                       >
@@ -229,7 +231,7 @@ export default function GuruLaporanPage() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => alert(`Mengunduh berkas: ${selectedLaporan.fileName || 'Laporan_PKL.pdf'}`)}
+                  onClick={() => showAlert({ title: 'Unduh Berkas', message: `Sedang mengunduh berkas laporan: ${selectedLaporan.fileName || 'Laporan_PKL.pdf'}`, type: 'info' })}
                   className="btn btn-primary btn-sm"
                 >
                   📄 Unduh Dokumen ({selectedLaporan.fileName || 'Laporan PKL'}) ⬇️

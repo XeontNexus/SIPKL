@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useModalAlert } from '@/components/ModalAlert';
 
 export default function ManajemenAkunPage() {
+  const { showAlert, showConfirm } = useModalAlert();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -84,11 +86,23 @@ export default function ManajemenAkunPage() {
   };
 
   const handleDelete = async (userId) => {
-    if (!confirm('Yakin ingin menghapus akun ini?')) return;
+    const confirmed = await showConfirm({
+      title: 'Hapus Akun Pengguna',
+      message: 'Apakah Anda yakin ingin menghapus akun pengguna ini secara permanen?',
+      type: 'danger',
+      confirmText: 'Ya, Hapus Akun',
+      cancelText: 'Batal',
+    });
+    if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/users/${userId}`, { method: 'DELETE' });
       if (res.ok) {
+        await showAlert({
+          title: 'Akun Dihapus',
+          message: 'Akun berhasil dihapus dari sistem.',
+          type: 'success',
+        });
         fetchUsers();
       }
     } catch (error) {
