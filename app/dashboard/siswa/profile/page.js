@@ -78,6 +78,8 @@ export default function SiswaProfilePage() {
                 ? `${json.data.kelas} - ${json.data.jurusan}`
                 : prev.kelasJurusan),
             guruPembimbing: json.data.guruPembimbing || prev.guruPembimbing,
+            statusBimbinganGuru: json.data.statusBimbinganGuru || prev.statusBimbinganGuru || 'MENUNGGU_ACC',
+            catatanGuruBimbingan: json.data.catatanGuruBimbingan || '',
             tanggalMulaiMagang: json.data.tanggalMulaiMagang || prev.tanggalMulaiMagang,
             tanggalSelesaiMagang: json.data.tanggalSelesaiMagang || prev.tanggalSelesaiMagang,
           }));
@@ -448,13 +450,37 @@ export default function SiswaProfilePage() {
                 </div>
               </div>
 
-              <div style={{ padding: '10px 12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '8px', border: '1px solid var(--border-primary, #e2e8f0)' }}>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>
-                  Guru Pembimbing
+              <div style={{ padding: '12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '8px', border: '1px solid var(--border-primary, #e2e8f0)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', textTransform: 'uppercase', fontWeight: 700 }}>
+                    Guru Pembimbing Sekolah
+                  </div>
+                  {profile.statusBimbinganGuru === 'DISETUJUI' ? (
+                    <span className="badge badge-success" style={{ fontSize: '0.7rem' }}>✓ Disetujui (ACC)</span>
+                  ) : profile.statusBimbinganGuru === 'DITOLAK' ? (
+                    <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>✕ Ditolak Guru</span>
+                  ) : profile.guruPembimbing ? (
+                    <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>⏳ Menunggu ACC</span>
+                  ) : null}
                 </div>
-                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--primary)', marginTop: '2px' }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--primary)', marginTop: '4px' }}>
                   👨‍🏫 {profile.guruPembimbing || 'Belum Ditentukan'}
                 </div>
+                {profile.statusBimbinganGuru === 'MENUNGGU_ACC' && profile.guruPembimbing && (
+                  <div style={{ fontSize: '0.76rem', color: '#b45309', marginTop: '4px', background: '#fffbeb', padding: '4px 8px', borderRadius: '4px', border: '1px solid #fde68a' }}>
+                    ⏳ Menunggu guru pembimbing meng-ACC permohonan Anda agar resmi masuk daftar bimbingan beliau.
+                  </div>
+                )}
+                {profile.statusBimbinganGuru === 'DISETUJUI' && (
+                  <div style={{ fontSize: '0.76rem', color: '#15803d', marginTop: '4px' }}>
+                    ✅ Anda resmi terdaftar dalam daftar siswa bimbingan aktif beliau.
+                  </div>
+                )}
+                {profile.statusBimbinganGuru === 'DITOLAK' && (
+                  <div style={{ fontSize: '0.76rem', color: '#b91c1c', marginTop: '4px', background: '#fef2f2', padding: '4px 8px', borderRadius: '4px', border: '1px solid #fecaca' }}>
+                    ✕ Ditolak: &ldquo;{profile.catatanGuruBimbingan || 'Silakan pilih guru lain di formulir profil.'}&rdquo;
+                  </div>
+                )}
               </div>
 
               <div style={{ padding: '10px 12px', background: 'var(--bg-secondary, #f8fafc)', borderRadius: '8px', border: '1px solid var(--border-primary, #e2e8f0)' }}>

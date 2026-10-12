@@ -24,7 +24,7 @@ export default function GuruPenilaianPage() {
       const res = await fetch('/api/guru/siswa');
       if (res.ok) {
         const data = await res.json();
-        setSiswa(data);
+        setSiswa(Array.isArray(data) ? data : (data.siswaAktif || []));
       }
     } catch (error) {
       console.error('Error:', error);
